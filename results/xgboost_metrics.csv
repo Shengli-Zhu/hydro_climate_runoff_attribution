@@ -1,0 +1,4 @@
+Country,R2,RMSE,NSE,KGE
+Saudi Arabia (Arid),0.2469,1.9651,0.2469,0.6000
+Italy (Transition),0.8066,25.4641,0.8066,0.8531
+Bangladesh (Humid),0.9262,35.5852,0.9262,0.9501

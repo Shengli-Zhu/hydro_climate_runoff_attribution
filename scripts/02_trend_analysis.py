@@ -9,11 +9,19 @@ Outputs:
   - Fig.4-style trend visualization (regional mean bar charts)
 """
 
+import sys
 import pandas as pd
 import numpy as np
 import pymannkendall as mk
 import matplotlib.pyplot as plt
 import os
+import rioxarray
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from scipy import stats
+
+sys.path.insert(0, os.path.dirname(__file__))
+from utils_load import load_country_mean_timeseries
 
 # ============================================================================
 # Configuration
@@ -28,6 +36,12 @@ COUNTRIES = {
     'Saudi_Arabia': {'label': 'Saudi Arabia (Arid)', 'color': '#E74C3C'},
     'Italy': {'label': 'Italy (Transition)', 'color': '#3498DB'},
     'Bangladesh': {'label': 'Bangladesh (Humid)', 'color': '#2ECC71'},
+}
+
+COUNTRY_NC_NAME = {
+    'Saudi_Arabia': 'Saudi',
+    'Italy': 'Italy',
+    'Bangladesh': 'Bangladesh',
 }
 
 SEASONS = {
@@ -49,18 +63,9 @@ VARIABLES = {
 # Data Loading
 # ============================================================================
 def load_country_data(country_name):
-    """Load monthly ERA5-Land CSV for one country."""
-    filepath = os.path.join(DATA_DIR, f'{country_name}_ERA5Land_Monthly.csv')
-    df = pd.read_csv(filepath)
-    df['date'] = pd.to_datetime(df['date'], format='%Y-%m')
-    df = df.sort_values('date').reset_index(drop=True)
-    df['year'] = df['date'].dt.year
-    df['month'] = df['date'].dt.month
-
-    for col in VARIABLES:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-    return df
+    """Load spatially averaged monthly time series from NetCDF."""
+    nc_name = COUNTRY_NC_NAME.get(country_name, country_name)
+    return load_country_mean_timeseries(nc_name)
 
 
 # ============================================================================
@@ -95,7 +100,7 @@ def compute_seasonal_series(df, var, season_months):
 
     # Filter to complete years
     series = series[series.index >= 2001]  # exclude partial first year for DJF
-    series = series[series.index <= 2024]
+    series = series[series.index <= 2025]
     return series
 
 
@@ -213,7 +218,7 @@ def plot_annual_trends(data_dict):
             ax.grid(True, alpha=0.3)
 
     axes[-1, 1].set_xlabel('Year', fontsize=12)
-    plt.suptitle('Annual Trends: Mann-Kendall + Sen\'s Slope (2000-2024)',
+    plt.suptitle('Annual Trends: Mann-Kendall + Sen\'s Slope (2000-2025)',
                  fontsize=15, y=1.01)
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig4_annual_trends.png'),
@@ -229,6 +234,7 @@ def plot_trend_heatmap(trend_df):
     fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True)
 
     scales = ['Annual', 'DJF', 'MAM', 'JJA', 'SON']
+    scale_labels = ['Annual', 'Winter\n(DJF)', 'Spring\n(MAM)', 'Summer\n(JJA)', 'Autumn\n(SON)']
 
     for idx, (var, var_info) in enumerate(VARIABLES.items()):
         ax = axes[idx]
@@ -272,20 +278,129 @@ def plot_trend_heatmap(trend_df):
                             ha='center', va='center', fontsize=8)
 
         ax.set_xticks(range(len(scales)))
-        ax.set_xticklabels(scales, rotation=45, fontsize=9)
+        ax.set_xticklabels(scale_labels, rotation=0, fontsize=8)
         ax.set_yticks(range(len(country_labels)))
         ax.set_yticklabels(country_labels, fontsize=9)
         ax.set_title(var_info['label'], fontsize=11, fontweight='bold')
 
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    plt.suptitle("Sen's Slope Trends (* = significant at α=0.05)",
+    plt.suptitle("Sen's Slope Trends (* = significant at α=0.05, 2000–2025)",
                  fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig4_trend_heatmap.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
     print('Saved: fig4_trend_heatmap.png')
+
+
+# ============================================================================
+# Pixel-Level Spatial Trend Analysis
+# ============================================================================
+ANNUAL_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'GEE_ERA5Land_Annual')
+
+TREND_VARS = {
+    'P_mm':  {'label': 'Precipitation trend (mm/yr)', 'cmap': 'BrBG'},
+    'R_mm':  {'label': 'Runoff trend (mm/yr)',         'cmap': 'BrBG'},
+    'T_C':   {'label': 'Temperature trend (°C/yr)',    'cmap': 'RdBu_r'},
+}
+
+
+def load_annual_geotiff(country_nc_name, var):
+    """
+    Load annual GeoTIFF stack for one country/variable.
+    Returns (data_3d, lons, lats) where data_3d has shape (n_years, nlat, nlon).
+    """
+    fpath = os.path.join(ANNUAL_DIR, f'{country_nc_name}_Annual_{var}.tif')
+    da = rioxarray.open_rasterio(fpath, masked=True)   # (band, y, x)
+    data = da.values.astype(float)   # (n_years, nlat, nlon)
+    lons = da.x.values
+    lats = da.y.values
+    return data, lons, lats
+
+
+def compute_pixel_trends(data_3d):
+    """
+    Compute pixel-level Sen's slope and Mann-Kendall p-value.
+    data_3d: (n_years, nlat, nlon)
+    Returns slopes and pvals arrays of shape (nlat, nlon).
+    """
+    n_years, nlat, nlon = data_3d.shape
+    years = np.arange(n_years, dtype=float)
+    slopes = np.full((nlat, nlon), np.nan)
+    pvals  = np.full((nlat, nlon), np.nan)
+
+    for i in range(nlat):
+        for j in range(nlon):
+            ts = data_3d[:, i, j]
+            if np.isnan(ts).any():
+                continue
+            res = stats.theilslopes(ts, years)
+            slopes[i, j] = res.slope
+            _, pval = stats.kendalltau(years, ts)
+            pvals[i, j] = pval
+
+    return slopes, pvals
+
+
+def plot_spatial_trend_maps():
+    """
+    Pixel-level Sen's slope spatial trend maps for P, R, T.
+    Layout: 3 rows (variables) x 3 columns (countries).
+    Significant pixels (p<0.05) are shown with full opacity; others are lighter.
+    """
+    fig, axes = plt.subplots(
+        3, 3, figsize=(16, 13),
+        subplot_kw={'projection': ccrs.PlateCarree()}
+    )
+
+    for j, (country, info) in enumerate(COUNTRIES.items()):
+        nc_name = COUNTRY_NC_NAME[country]
+
+        for i, (var, var_info) in enumerate(TREND_VARS.items()):
+            ax = axes[i, j]
+            print(f'  Computing pixel trends: {nc_name} / {var}...')
+
+            data_3d, lons, lats = load_annual_geotiff(nc_name, var)
+            slopes, pvals = compute_pixel_trends(data_3d)
+
+            # Symmetric color scale
+            vmax = np.nanpercentile(np.abs(slopes), 98)
+            if vmax == 0 or np.isnan(vmax):
+                vmax = 1.0
+
+            # Plot all pixels (non-significant dimmed via alpha trick using two layers)
+            im = ax.pcolormesh(lons, lats, slopes,
+                               cmap=var_info['cmap'], vmin=-vmax, vmax=vmax,
+                               transform=ccrs.PlateCarree(), alpha=0.4)
+            # Overlay significant pixels at full opacity
+            sig_slopes = np.where(pvals < 0.05, slopes, np.nan)
+            ax.pcolormesh(lons, lats, sig_slopes,
+                          cmap=var_info['cmap'], vmin=-vmax, vmax=vmax,
+                          transform=ccrs.PlateCarree(), alpha=1.0)
+
+            ax.add_feature(cfeature.BORDERS, linewidth=0.5, edgecolor='black')
+            ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
+            ax.gridlines(linewidth=0.3, alpha=0.5)
+
+            plt.colorbar(im, ax=ax, orientation='vertical',
+                         fraction=0.046, pad=0.04)
+
+            if i == 0:
+                ax.set_title(info['label'], fontsize=11, fontweight='bold')
+            if j == 0:
+                ax.set_ylabel(var_info['label'], fontsize=9)
+
+    plt.suptitle(
+        'Pixel-Level Sen\'s Slope (2000–2025)\nOpaque = significant (p<0.05), '
+        'Transparent = non-significant',
+        fontsize=13, fontweight='bold', y=1.01
+    )
+    plt.tight_layout()
+    plt.savefig(os.path.join(FIG_DIR, 'fig4b_spatial_trend_maps.png'),
+                dpi=300, bbox_inches='tight')
+    plt.close()
+    print('Saved: fig4b_spatial_trend_maps.png')
 
 
 # ============================================================================
@@ -321,6 +436,8 @@ def main():
     print('\nGenerating figures...')
     plot_annual_trends(data)
     plot_trend_heatmap(trend_df)
+    print('\nComputing pixel-level trend maps (may take a few minutes)...')
+    plot_spatial_trend_maps()
 
     print('\nTrend analysis complete!')
 

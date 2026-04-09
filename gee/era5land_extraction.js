@@ -1,13 +1,14 @@
 // =============================================================================
 // ERA5-Land Monthly Data Extraction for Three Countries
 // Dataset: ECMWF/ERA5_LAND/MONTHLY_AGGR
-// Period: 2000-01 to 2025-03
+// Period: 2000-01 to 2025-12
 // Countries: Saudi Arabia (arid), Italy (transition), Bangladesh (humid)
+// Output: Monthly GeoTIFF stacks (312 bands) + Annual GeoTIFF stacks (26 bands)
 // =============================================================================
 
 // ---------------------- 1. Load ERA5-Land Monthly Dataset ----------------------
 var era5land = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
-  .filterDate('2000-01-01', '2025-04-01');
+  .filterDate('2000-01-01', '2026-01-01');  // end is exclusive, so this captures through 2025-12
 
 // ---------------------- 2. Define Country Boundaries ----------------------
 var countries = ee.FeatureCollection('FAO/GAUL/2015/level0');
@@ -63,95 +64,111 @@ var processMonth = function(image) {
 
 var processed = era5land.map(processMonth);
 
-// ---------------------- 4. Extract Area-Weighted Mean Time Series ----------------------
-var bandNames = ['P_mm', 'ET_mm', 'R_sro_mm', 'R_ssro_mm', 'R_mm', 'S_mm',
-                 'T_C', 'Td_C', 'Rn_sw', 'Rn_lw', 'Wind', 'Ts_C', 'SP'];
+// ---------------------- 4. Verify system:index format (run first, check console) ----------------------
+// Expected output: "200001" (YYYYMM)
+// If format differs, adjust slice indices in exportMonthlyStack below.
+print('Total images:', processed.size());
+print('system:index sample:', processed.first().getString('system:index'));
 
-var extractTimeSeries = function(region, regionName) {
-  return processed.map(function(image) {
-    var stats = image.select(bandNames)
-      .reduceRegion({
-        reducer: ee.Reducer.mean(),
-        geometry: region.geometry(),
-        scale: 11132,
-        bestEffort: true
-      });
-    return ee.Feature(null, stats)
-      .set('date', image.date().format('YYYY-MM'))
-      .set('country', regionName);
+// ---------------------- 5. Monthly GeoTIFF Stack Export (312 bands per file) ----------------------
+// Each file: one variable, one country, 312 bands (2000_01 ... 2025_12)
+// Pixel outside country boundary = nodata
+
+var exportMonthlyStack = function(region, regionName, varName) {
+  // Build YYYY_MM band labels from system:index (e.g. "200001" -> "2000_01")
+  var bandList = ee.List(processed.aggregate_array('system:index')).map(function(idx) {
+    idx = ee.String(idx);
+    return idx.slice(0, 4).cat('_').cat(idx.slice(4, 6));
+  });
+
+  var renamed = processed.map(function(image) {
+    var idx = image.getString('system:index');
+    var label = idx.slice(0, 4).cat('_').cat(idx.slice(4, 6));
+    return image.select([varName]).rename([label]);
+  });
+
+  var stack = renamed.toBands().rename(bandList).clip(region.geometry());
+
+  Export.image.toDrive({
+    image: stack,
+    description: regionName + '_Monthly_' + varName,
+    folder: 'GEE_ERA5Land_Monthly',
+    fileNamePrefix: regionName + '_Monthly_' + varName,
+    region: region.geometry().bounds(),
+    scale: 11132,
+    crs: 'EPSG:4326',
+    maxPixels: 1e13,
+    fileFormat: 'GeoTIFF'
   });
 };
 
-var saudi_ts = extractTimeSeries(saudi, 'Saudi_Arabia');
-var italy_ts = extractTimeSeries(italy, 'Italy');
-var bangladesh_ts = extractTimeSeries(bangladesh, 'Bangladesh');
+// ---------------------- 6. Annual GeoTIFF Stack Export (26 bands per file) ----------------------
+// Flux/accumulation variables -> .sum() for annual total
+// State/intensive variables   -> .mean() for annual average
+// Note: monthly values are already in mm (P, ET, R) or monthly-mean (T, S, Wind)
+// Annual P/ET/R = sum of 12 monthly mm values = annual total mm
+// Annual T/S    = mean of 12 monthly values
 
-// ---------------------- 5. Export to Google Drive as CSV ----------------------
-Export.table.toDrive({
-  collection: saudi_ts,
-  description: 'Saudi_ERA5Land_Monthly',
-  folder: 'GEE_ERA5Land_Export',
-  fileNamePrefix: 'Saudi_ERA5Land_Monthly',
-  fileFormat: 'CSV'
-});
+var SUM_VARS  = ['P_mm', 'ET_mm', 'R_sro_mm', 'R_ssro_mm', 'R_mm', 'Rn_sw', 'Rn_lw'];
 
-Export.table.toDrive({
-  collection: italy_ts,
-  description: 'Italy_ERA5Land_Monthly',
-  folder: 'GEE_ERA5Land_Export',
-  fileNamePrefix: 'Italy_ERA5Land_Monthly',
-  fileFormat: 'CSV'
-});
+var exportAnnualStack = function(region, regionName, varName) {
+  var years = ee.List.sequence(2000, 2025);
 
-Export.table.toDrive({
-  collection: bangladesh_ts,
-  description: 'Bangladesh_ERA5Land_Monthly',
-  folder: 'GEE_ERA5Land_Export',
-  fileNamePrefix: 'Bangladesh_ERA5Land_Monthly',
-  fileFormat: 'CSV'
-});
+  var annualCollection = ee.ImageCollection.fromImages(
+    years.map(function(y) {
+      var start = ee.Date.fromYMD(y, 1, 1);
+      var end   = ee.Date.fromYMD(ee.Number(y).add(1), 1, 1);
+      var monthly = processed.filterDate(start, end).select(varName);
+      var annual = (SUM_VARS.indexOf(varName) >= 0) ? monthly.sum() : monthly.mean();
+      return annual.set('system:index', ee.Number(y).int().format('%d'));
+    })
+  );
 
-// ---------------------- 6. Export Annual Totals as GeoTIFF (for spatial trend maps) ----------------------
-var years = ee.List.sequence(2000, 2024);
-
-var annualImages = function(region, regionName, varName) {
-  return years.map(function(y) {
-    var startDate = ee.Date.fromYMD(y, 1, 1);
-    var endDate = ee.Date.fromYMD(ee.Number(y).add(1), 1, 1);
-    var annual = processed.filterDate(startDate, endDate)
-      .select(varName).sum()
-      .clip(region.geometry());
-    return annual.set('year', y).set('system:time_start', startDate.millis());
+  var yearLabels = ee.List.sequence(2000, 2025).map(function(y) {
+    return ee.Number(y).int().format('%d');
   });
-};
+  var stack = annualCollection.toBands().rename(yearLabels).clip(region.geometry());
 
-// Export annual P, ET, R for each country (for pixel-level MK trend analysis)
-var exportAnnual = function(region, regionName, varName) {
-  var collection = ee.ImageCollection.fromImages(annualImages(region, regionName, varName));
-  var stack = collection.toBands();
   Export.image.toDrive({
     image: stack,
     description: regionName + '_Annual_' + varName,
-    folder: 'GEE_ERA5Land_Export',
+    folder: 'GEE_ERA5Land_Annual',
     fileNamePrefix: regionName + '_Annual_' + varName,
-    region: region.geometry(),
+    region: region.geometry().bounds(),
     scale: 11132,
-    maxPixels: 1e13
+    crs: 'EPSG:4326',
+    maxPixels: 1e13,
+    fileFormat: 'GeoTIFF'
   });
 };
 
-// Export for spatial trend maps (Section 7.4)
-var varsToExport = ['P_mm', 'ET_mm', 'R_mm'];
+// ---------------------- 7. Trigger All Exports ----------------------
 var regions = [
-  {region: saudi, name: 'Saudi'},
-  {region: italy, name: 'Italy'},
+  {region: saudi,      name: 'Saudi'},
+  {region: italy,      name: 'Italy'},
   {region: bangladesh, name: 'Bangladesh'}
 ];
 
+// Monthly exports: 3 countries x 13 variables = 39 tasks
+// Outputs: Saudi_Monthly_P_mm.tif, Italy_Monthly_T_C.tif, etc.
+var allVars = ['P_mm', 'ET_mm', 'R_sro_mm', 'R_ssro_mm', 'R_mm', 'S_mm',
+               'T_C', 'Td_C', 'Rn_sw', 'Rn_lw', 'Wind', 'Ts_C', 'SP'];
+
 regions.forEach(function(r) {
-  varsToExport.forEach(function(v) {
-    exportAnnual(r.region, r.name, v);
+  allVars.forEach(function(v) {
+    exportMonthlyStack(r.region, r.name, v);
   });
 });
 
-print('All exports configured. Run tasks in the GEE Tasks tab.');
+// Annual exports (spatial trend maps): 3 countries x 5 variables = 15 tasks
+// Outputs: Saudi_Annual_P_mm.tif, Italy_Annual_T_C.tif, etc.
+var annualVars = ['P_mm', 'ET_mm', 'R_mm', 'T_C', 'S_mm'];
+
+regions.forEach(function(r) {
+  annualVars.forEach(function(v) {
+    exportAnnualStack(r.region, r.name, v);
+  });
+});
+
+print('Export tasks configured: 39 monthly + 15 annual = 54 total.');
+print('Tip: submit Bangladesh tasks first (smallest files), then Italy, then Saudi.');

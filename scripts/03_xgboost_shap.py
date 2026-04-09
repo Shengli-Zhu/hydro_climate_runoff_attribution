@@ -15,15 +15,19 @@ Outputs:
   - Model performance metrics CSV
 """
 
+import sys
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import r2_score, mean_squared_error
 import shap
 import matplotlib.pyplot as plt
 import warnings
 import os
+
+sys.path.insert(0, os.path.dirname(__file__))
+from utils_load import load_pixel_dataframe
 
 warnings.filterwarnings('ignore')
 
@@ -40,6 +44,12 @@ COUNTRIES = {
     'Saudi_Arabia': {'label': 'Saudi Arabia (Arid)', 'color': '#E74C3C'},
     'Italy': {'label': 'Italy (Transition)', 'color': '#3498DB'},
     'Bangladesh': {'label': 'Bangladesh (Humid)', 'color': '#2ECC71'},
+}
+
+COUNTRY_NC_NAME = {
+    'Saudi_Arabia': 'Saudi',
+    'Italy': 'Italy',
+    'Bangladesh': 'Bangladesh',
 }
 
 FEATURE_NAMES = ['P_mm', 'T_C', 'Td_C', 'Rn_sw', 'Rn_lw', 'Wind', 'Ts_C', 'S_prev']
@@ -61,25 +71,10 @@ RANDOM_STATE = 42
 # Data Loading & Feature Engineering
 # ============================================================================
 def load_and_prepare(country_name):
-    """Load CSV and prepare features for ML."""
-    filepath = os.path.join(DATA_DIR, f'{country_name}_ERA5Land_Monthly.csv')
-    df = pd.read_csv(filepath)
-    df['date'] = pd.to_datetime(df['date'], format='%Y-%m')
-    df = df.sort_values('date').reset_index(drop=True)
-
-    # Ensure numeric
-    numeric_cols = ['P_mm', 'ET_mm', 'R_mm', 'S_mm', 'T_C', 'Td_C',
-                    'Rn_sw', 'Rn_lw', 'Wind', 'Ts_C']
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-    # Antecedent soil water (previous month)
-    df['S_prev'] = df['S_mm'].shift(1)
-
-    # Drop first row (no S_prev) and any NaN
+    """Load pixel-level data from NetCDF and prepare features for ML."""
+    nc_name = COUNTRY_NC_NAME.get(country_name, country_name)
+    df = load_pixel_dataframe(nc_name)  # already has S_prev, dS
     df = df.dropna(subset=FEATURE_NAMES + ['R_mm']).reset_index(drop=True)
-
     return df
 
 
@@ -93,16 +88,17 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
     """
     X = df[FEATURE_NAMES].values
     y = df['R_mm'].values
-    dates = df['date'].values
+    dates = df['time'].values
 
-    # Temporal split: 80% train, 20% test
-    split_idx = int(len(X) * 0.8)
-    X_train, X_test = X[:split_idx], X[split_idx:]
-    y_train, y_test = y[:split_idx], y[split_idx:]
-    dates_test = dates[split_idx:]
+    # Year-based temporal split: 2000-2019 train (~77%), 2020-2025 test (~23%)
+    train_mask = df['year'] <= 2019
+    X_train, X_test = X[train_mask], X[~train_mask]
+    y_train, y_test = y[train_mask], y[~train_mask]
+    dates_test = dates[~train_mask]
 
     if tune_hyperparams:
-        # Hyperparameter tuning with TimeSeriesSplit CV
+        # Hyperparameter tuning with GridSearchCV
+        # Note: tune_hyperparams=False recommended for large datasets (~1M+ rows)
         param_grid = {
             'n_estimators': [100, 200, 300],
             'max_depth': [3, 5, 7],
@@ -111,11 +107,9 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
             'colsample_bytree': [0.8],
         }
 
-        tscv = TimeSeriesSplit(n_splits=5)
         base_model = xgb.XGBRegressor(random_state=RANDOM_STATE)
-
         grid_search = GridSearchCV(
-            base_model, param_grid, cv=tscv,
+            base_model, param_grid, cv=3,
             scoring='r2', n_jobs=-1, verbose=0
         )
         grid_search.fit(X_train, y_train)
@@ -137,8 +131,14 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     nse = 1 - np.sum((y_test - y_pred) ** 2) / np.sum((y_test - y_test.mean()) ** 2)
 
-    metrics = {'R2': r2, 'RMSE': rmse, 'NSE': nse}
-    print(f'  {country_name}: R²={r2:.3f}, RMSE={rmse:.2f}, NSE={nse:.3f}')
+    # KGE: Kling-Gupta Efficiency
+    r = np.corrcoef(y_test, y_pred)[0, 1]
+    alpha = y_pred.std() / (y_test.std() + 1e-10)
+    beta = y_pred.mean() / (y_test.mean() + 1e-10)
+    kge = 1 - np.sqrt((r - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
+
+    metrics = {'R2': r2, 'RMSE': rmse, 'NSE': nse, 'KGE': kge}
+    print(f'  {country_name}: R²={r2:.3f}, RMSE={rmse:.2f}, NSE={nse:.3f}, KGE={kge:.3f}')
 
     return model, X_train, X_test, y_test, y_pred, dates_test, metrics
 
@@ -146,11 +146,17 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
 # ============================================================================
 # SHAP Analysis
 # ============================================================================
-def compute_shap(model, X_test):
-    """Compute SHAP values using TreeExplainer."""
+def compute_shap(model, X_test, max_samples=5000):
+    """Compute SHAP values using TreeExplainer (subsampled for speed)."""
     explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_test)
-    return explainer, shap_values
+    if len(X_test) > max_samples:
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(X_test), max_samples, replace=False)
+        X_sample = X_test[idx]
+    else:
+        X_sample = X_test
+    shap_values = explainer.shap_values(X_sample)
+    return explainer, shap_values, X_sample
 
 
 # ============================================================================
@@ -181,7 +187,7 @@ def plot_predicted_vs_observed(results):
         ax.set_title(info['label'], fontsize=12, fontweight='bold')
 
         # Metrics text
-        text = f"R²={metrics['R2']:.3f}\nRMSE={metrics['RMSE']:.2f}\nNSE={metrics['NSE']:.3f}"
+        text = f"R²={metrics['R2']:.3f}\nRMSE={metrics['RMSE']:.2f}\nNSE={metrics['NSE']:.3f}\nKGE={metrics['KGE']:.3f}"
         ax.text(0.05, 0.95, text, transform=ax.transAxes,
                 fontsize=10, verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
@@ -209,7 +215,7 @@ def plot_shap_summary(results):
         plt.sca(ax)
         shap.summary_plot(
             res['shap_values'],
-            pd.DataFrame(res['X_test'], columns=FEATURE_NAMES),
+            pd.DataFrame(res['X_shap'], columns=FEATURE_NAMES),
             feature_names=[FEATURE_LABELS[f] for f in FEATURE_NAMES],
             show=False,
             plot_size=None,
@@ -269,7 +275,7 @@ def plot_shap_dependence_precipitation(results):
 
     for ax, (country, info) in zip(axes, COUNTRIES.items()):
         res = results[country]
-        X_df = pd.DataFrame(res['X_test'], columns=FEATURE_NAMES)
+        X_df = pd.DataFrame(res['X_shap'], columns=FEATURE_NAMES)
         shap_vals = res['shap_values']
 
         scatter = ax.scatter(
@@ -307,6 +313,7 @@ def export_metrics(results):
             'R2': m['R2'],
             'RMSE': m['RMSE'],
             'NSE': m['NSE'],
+            'KGE': m['KGE'],
         })
     df = pd.DataFrame(rows)
     df.to_csv(os.path.join(RESULTS_DIR, 'xgboost_metrics.csv'),
@@ -351,15 +358,16 @@ def main():
 
         print('Training XGBoost...')
         model, X_train, X_test, y_test, y_pred, dates_test, metrics = \
-            train_xgboost(df, country, tune_hyperparams=True)
+            train_xgboost(df, country, tune_hyperparams=False)
 
         print('Computing SHAP values...')
-        explainer, shap_values = compute_shap(model, X_test)
+        explainer, shap_values, X_shap = compute_shap(model, X_test)
 
         results[country] = {
             'model': model,
             'X_train': X_train,
             'X_test': X_test,
+            'X_shap': X_shap,
             'y_test': y_test,
             'y_pred': y_pred,
             'dates_test': dates_test,

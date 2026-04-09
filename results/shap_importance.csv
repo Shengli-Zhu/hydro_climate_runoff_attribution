@@ -1,0 +1,25 @@
+Country,Feature,Mean_Abs_SHAP
+Saudi Arabia (Arid),Precipitation,0.0953
+Saudi Arabia (Arid),Temperature,0.3222
+Saudi Arabia (Arid),Dewpoint Temp,0.3332
+Saudi Arabia (Arid),Net SW Radiation,0.0407
+Saudi Arabia (Arid),Net LW Radiation,0.0579
+Saudi Arabia (Arid),Wind Speed,0.0683
+Saudi Arabia (Arid),Soil Temperature,0.0749
+Saudi Arabia (Arid),Antecedent Soil Water,0.0611
+Italy (Transition),Precipitation,17.5942
+Italy (Transition),Temperature,22.3540
+Italy (Transition),Dewpoint Temp,8.3402
+Italy (Transition),Net SW Radiation,16.9032
+Italy (Transition),Net LW Radiation,5.0725
+Italy (Transition),Wind Speed,1.6627
+Italy (Transition),Soil Temperature,44.9075
+Italy (Transition),Antecedent Soil Water,12.1412
+Bangladesh (Humid),Precipitation,68.5120
+Bangladesh (Humid),Temperature,2.8425
+Bangladesh (Humid),Dewpoint Temp,9.9298
+Bangladesh (Humid),Net SW Radiation,9.6613
+Bangladesh (Humid),Net LW Radiation,7.3543
+Bangladesh (Humid),Wind Speed,5.1082
+Bangladesh (Humid),Soil Temperature,4.5216
+Bangladesh (Humid),Antecedent Soil Water,25.2879
