@@ -213,25 +213,26 @@ def plot_annual_trends(data_dict):
             if i == 0:
                 ax.set_title(info['label'], fontsize=12, fontweight='bold')
             if j == 0:
-                ax.set_ylabel(var_info['unit'], fontsize=10)
+                ax.set_ylabel(f"{var_info['label'].split(' (')[0]}\n({var_info['unit']})",
+                              fontsize=9)
 
             ax.grid(True, alpha=0.3)
 
     axes[-1, 1].set_xlabel('Year', fontsize=12)
-    plt.suptitle('Annual Trends: Mann-Kendall + Sen\'s Slope (2000-2025)',
+    plt.suptitle('Annual Trends: Mann-Kendall + Sen\'s Slope (1950-2025)',
                  fontsize=15, y=1.01)
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig4_annual_trends.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig06_annual_trends.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig4_annual_trends.png')
+    print('Saved: fig06_annual_trends.png')
 
 
 def plot_trend_heatmap(trend_df):
     """
     Heatmap of Sen's slopes across countries, variables, and seasons.
     """
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True)
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
 
     scales = ['Annual', 'DJF', 'MAM', 'JJA', 'SON']
     scale_labels = ['Annual', 'Winter\n(DJF)', 'Spring\n(MAM)', 'Summer\n(JJA)', 'Autumn\n(SON)']
@@ -280,18 +281,18 @@ def plot_trend_heatmap(trend_df):
         ax.set_xticks(range(len(scales)))
         ax.set_xticklabels(scale_labels, rotation=0, fontsize=8)
         ax.set_yticks(range(len(country_labels)))
-        ax.set_yticklabels(country_labels, fontsize=9)
+        ax.set_yticklabels(country_labels, fontsize=9, rotation=90, va='center')
         ax.set_title(var_info['label'], fontsize=11, fontweight='bold')
 
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    plt.suptitle("Sen's Slope Trends (* = significant at α=0.05, 2000–2025)",
+    plt.suptitle("Sen's Slope Trends (* = significant at α=0.05, 1950–2025)",
                  fontsize=14, fontweight='bold')
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig4_trend_heatmap.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig07_trend_heatmap.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig4_trend_heatmap.png')
+    print('Saved: fig07_trend_heatmap.png')
 
 
 # ============================================================================
@@ -301,9 +302,10 @@ ANNUAL_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'GEE_ERA5Land
 
 TREND_VARS = {
     'P_mm':  {'label': 'Precipitation trend (mm/yr)', 'cmap': 'BrBG'},
-    'R_mm':  {'label': 'Runoff trend (mm/yr)',         'cmap': 'BrBG'},
+    'R_mm':  {'label': 'Runoff trend (mm/yr)',         'cmap': 'PuOr'},
     'T_C':   {'label': 'Temperature trend (°C/yr)',    'cmap': 'RdBu_r'},
 }
+
 
 
 def load_annual_geotiff(country_nc_name, var):
@@ -382,25 +384,32 @@ def plot_spatial_trend_maps():
             ax.add_feature(cfeature.BORDERS, linewidth=0.5, edgecolor='black')
             ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
             ax.gridlines(linewidth=0.3, alpha=0.5)
+            ax.set_aspect('auto')
 
             plt.colorbar(im, ax=ax, orientation='vertical',
                          fraction=0.046, pad=0.04)
 
             if i == 0:
                 ax.set_title(info['label'], fontsize=11, fontweight='bold')
-            if j == 0:
-                ax.set_ylabel(var_info['label'], fontsize=9)
+
+    # Row labels via fig.text — cartopy axes ignore set_ylabel
+    row_label_ys = [0.78, 0.49, 0.20]
+    for i, var_info in enumerate(TREND_VARS.values()):
+        fig.text(0.095, row_label_ys[i], var_info['label'],
+                 fontsize=9, fontweight='bold',
+                 ha='right', va='center', rotation=90)
 
     plt.suptitle(
-        'Pixel-Level Sen\'s Slope (2000–2025)\nOpaque = significant (p<0.05), '
+        'Pixel-Level Sen\'s Slope (1950–2025)\nOpaque = significant (p<0.05), '
         'Transparent = non-significant',
         fontsize=13, fontweight='bold', y=1.01
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig4b_spatial_trend_maps.png'),
+    fig.subplots_adjust(left=0.10)  # must be after tight_layout
+    plt.savefig(os.path.join(FIG_DIR, 'fig08_spatial_trend_maps.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig4b_spatial_trend_maps.png')
+    print('Saved: fig08_spatial_trend_maps.png')
 
 
 # ============================================================================

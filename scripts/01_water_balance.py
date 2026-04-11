@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import os
 
+import rasterio
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
@@ -44,6 +45,7 @@ COUNTRY_NC_NAME = {
     'Italy': 'Italy',
     'Bangladesh': 'Bangladesh',
 }
+
 
 # ============================================================================
 # Data Loading
@@ -117,79 +119,118 @@ def compute_annual(df):
 # ============================================================================
 # Visualization
 # ============================================================================
+def _load_dem(tif_path, max_size=1500):
+    """
+    Load a single-band GeoTIFF DEM with downsampling.
+    Resamples on read so the longer axis is at most max_size pixels,
+    avoiding memory errors on high-resolution DEMs (e.g. MERIT 90m).
+    Returns (lons, lats, data).
+    """
+    with rasterio.open(tif_path) as src:
+        h, w = src.height, src.width
+        scale = max(h, w) / max_size
+        out_h = max(1, int(h / scale))
+        out_w = max(1, int(w / scale))
+
+        data = src.read(
+            1,
+            out_shape=(out_h, out_w),
+            resampling=rasterio.enums.Resampling.average,
+        ).astype(float)
+
+        nodata = src.nodata
+        if nodata is not None:
+            data[data == nodata] = np.nan
+
+        # Rebuild coordinate arrays for the downsampled grid
+        res_x = (src.bounds.right - src.bounds.left) / out_w
+        res_y = (src.bounds.top - src.bounds.bottom) / out_h
+        xs = src.bounds.left + (np.arange(out_w) + 0.5) * res_x
+        ys = src.bounds.top  - (np.arange(out_h) + 0.5) * res_y
+        lons, lats = np.meshgrid(xs, ys)
+    return lons, lats, data
+
+
 def plot_study_area():
     """
-    Fig.1: Study area map showing the three countries on a world map.
+    Fig.1: Study area — 3 subpanels zoomed to each country with MERIT DEM fill.
+    DEM files: data/DEM/Saudi_DEM.tif, Italy_DEM.tif, Bangladesh_DEM.tif
+    (exported from GEE via gee/merit_dem_extraction.js)
     """
+    DEM_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'DEM')
+
     study_regions = {
-        'Saudi_Arabia': {
-            'label': 'Saudi Arabia\n(Arid)',
-            'color': '#E74C3C',
-            'center': (45.0, 24.0),   # lon, lat
+        'Saudi': {
+            'label': 'Saudi Arabia (Arid)',
             'extent': [36, 56, 16, 33],
         },
         'Italy': {
-            'label': 'Italy\n(Transition)',
-            'color': '#3498DB',
-            'center': (12.5, 42.5),
+            'label': 'Italy (Transition)',
             'extent': [6, 19, 36, 48],
         },
         'Bangladesh': {
-            'label': 'Bangladesh\n(Humid)',
-            'color': '#2ECC71',
-            'center': (90.5, 23.5),
+            'label': 'Bangladesh (Humid)',
             'extent': [88, 93, 20, 27],
         },
     }
 
-    fig = plt.figure(figsize=(14, 7))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    fig, axes = plt.subplots(
+        1, 3, figsize=(16, 5),
+        subplot_kw={'projection': ccrs.PlateCarree()}
+    )
+    fig.subplots_adjust(wspace=0.15)
 
-    # Background features
-    ax.add_feature(cfeature.OCEAN, facecolor='#D6EAF8', zorder=0)
-    ax.add_feature(cfeature.LAND, facecolor='#F0F0F0', zorder=1)
-    ax.add_feature(cfeature.BORDERS, linewidth=0.4, edgecolor='#AAAAAA', zorder=2)
-    ax.add_feature(cfeature.COASTLINE, linewidth=0.5, edgecolor='#888888', zorder=2)
+    cmap = plt.cm.terrain
 
-    # Highlight each country bounding box
-    for info in study_regions.values():
-        ext = info['extent']
-        lon0, lon1, lat0, lat1 = ext
-        ax.add_patch(mpatches.Rectangle(
-            (lon0, lat0), lon1 - lon0, lat1 - lat0,
-            linewidth=1.5, edgecolor=info['color'],
-            facecolor=info['color'], alpha=0.5,
-            transform=ccrs.PlateCarree(), zorder=3
-        ))
-        # Label
-        ax.text(
-            info['center'][0], info['center'][1], info['label'],
-            transform=ccrs.PlateCarree(), fontsize=9, fontweight='bold',
-            color='black', ha='center', va='center', zorder=4,
-            bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.7, edgecolor='none')
-        )
+    ims = []
+    for ax, (country, info) in zip(axes, study_regions.items()):
+        tif_path = os.path.join(DEM_DIR, f'{country}_DEM.tif')
 
-    ax.set_extent([-20, 120, -10, 60], crs=ccrs.PlateCarree())
-    ax.gridlines(draw_labels=True, linewidth=0.4, color='gray',
-                 alpha=0.5, linestyle='--')
+        if os.path.exists(tif_path):
+            lons, lats, dem = _load_dem(tif_path)
+            # Clip negative values (ocean/sea pixels stored as negative in MERIT)
+            dem = np.where(dem < 0, np.nan, dem)
+            vmin, vmax = 0, np.nanpercentile(dem, 99)
+            im = ax.pcolormesh(lons, lats, dem, cmap=cmap,
+                               vmin=vmin, vmax=vmax,
+                               transform=ccrs.PlateCarree(), zorder=1)
+            ims.append(im)
+        else:
+            # Fallback: plain ocean colour until DEM files are downloaded
+            ax.set_facecolor('#D6EAF8')
+            im = None
+            print(f'  [WARNING] DEM not found: {tif_path}')
+            print(f'  Run gee/merit_dem_extraction.js in GEE and place files in data/DEM/')
 
-    # Legend
-    legend_handles = [
-        mpatches.Patch(facecolor=info['color'], alpha=0.6,
-                       label=info['label'].replace('\n', ' '))
-        for info in study_regions.values()
-    ]
-    ax.legend(handles=legend_handles, loc='lower left', fontsize=10,
-              framealpha=0.9)
+        ax.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor='black', zorder=3)
+        ax.add_feature(cfeature.COASTLINE, linewidth=0.8, edgecolor='black', zorder=3)
+        ax.add_feature(cfeature.LAKES, facecolor='#AED6F1', zorder=2, alpha=0.7)
+        ax.add_feature(cfeature.RIVERS, edgecolor='#5DADE2', linewidth=0.5, zorder=2)
 
-    ax.set_title('Study Areas: Saudi Arabia, Italy, Bangladesh (ERA5-Land, 2000–2025)',
-                 fontsize=13, fontweight='bold', pad=10)
+        lon0, lon1, lat0, lat1 = info['extent']
+        pad = 1.0
+        ax.set_extent([lon0 - pad, lon1 + pad, lat0 - pad, lat1 + pad],
+                      crs=ccrs.PlateCarree())
+        ax.set_aspect('auto')
+
+        gl = ax.gridlines(draw_labels=True, linewidth=0.4, color='gray',
+                          alpha=0.5, linestyle='--')
+        gl.top_labels = False
+        gl.right_labels = False
+
+        ax.set_title(info['label'], fontsize=12, fontweight='bold', pad=8)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig1_study_area.png'),
+    # Horizontal colorbar at the bottom, placed after tight_layout
+    if ims:
+        fig.subplots_adjust(bottom=0.15)
+        cax = fig.add_axes([0.2, 0.04, 0.6, 0.03])  # [left, bottom, width, height]
+        cbar = fig.colorbar(ims[0], cax=cax, orientation='horizontal')
+        cbar.set_label('Elevation (m)', fontsize=11)
+    plt.savefig(os.path.join(FIG_DIR, 'fig01_study_area.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig1_study_area.png')
+    print('Saved: fig01_study_area.png')
 
 
 def plot_spatial_distribution():
@@ -210,7 +251,7 @@ def plot_spatial_distribution():
     )
     # Tighten column spacing; leave left margin for row labels
     fig.subplots_adjust(left=0.08, right=0.95, top=0.93, bottom=0.02,
-                        wspace=0.15, hspace=0.12)
+                        wspace=0.30, hspace=0.12)
 
     for j, (country, info) in enumerate(COUNTRIES.items()):
         nc_name = COUNTRY_NC_NAME[country]
@@ -230,53 +271,56 @@ def plot_spatial_distribution():
             ax.add_feature(cfeature.BORDERS, linewidth=0.5, edgecolor='black')
             ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
             ax.gridlines(linewidth=0.3, alpha=0.5)
+            ax.set_aspect('auto')
 
             plt.colorbar(im, ax=ax, orientation='vertical',
                          fraction=0.046, pad=0.04, label='mm/month')
 
             if i == 0:
                 ax.set_title(info['label'], fontsize=11, fontweight='bold')
+            if j == 0:
+                ax.text(-0.12, 0.5, var_info['label'],
+                        transform=ax.transAxes,
+                        fontsize=10, fontweight='bold',
+                        ha='right', va='center', rotation=90)
 
-    # Row labels via fig.text() — cartopy axes ignore set_ylabel
-    row_ys = [0.79, 0.50, 0.20]   # approximate vertical center of each row
-    for i, var_info in enumerate(var_labels):
-        fig.text(0.01, row_ys[i], var_info['label'],
-                 fontsize=10, fontweight='bold',
-                 ha='left', va='center', rotation=90)
-
-    fig.suptitle('Multi-Year Mean Spatial Distribution (2000–2025)',
+    fig.suptitle('Multi-Year Mean Spatial Distribution (1950–2025)',
                  fontsize=14, fontweight='bold')
-    plt.savefig(os.path.join(FIG_DIR, 'fig1b_spatial_distribution.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig02_spatial_distribution.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig1b_spatial_distribution.png')
+    print('Saved: fig02_spatial_distribution.png')
 
 
 def plot_water_balance_timeseries(data_dict):
     """
-    Fig.2: Monthly P, ET, R time series for three countries.
+    Fig.3: Annual P, ET, R time series for three countries.
     Three-row subplot layout, one country per row.
     """
     fig, axes = plt.subplots(3, 1, figsize=(14, 12), sharex=True)
 
     for ax, (name, info) in zip(axes, COUNTRIES.items()):
         df = data_dict[name]
-        ax.plot(df['date'], df['P_mm'], label='P', color='#2980B9', linewidth=0.8)
-        ax.plot(df['date'], df['ET_mm'], label='ET', color='#E74C3C', linewidth=0.8)
-        ax.plot(df['date'], df['R_mm'], label='R', color='#27AE60', linewidth=0.8)
-        ax.fill_between(df['date'], 0, df['P_mm'], alpha=0.15, color='#2980B9')
-        ax.set_ylabel('mm/month')
+        annual = compute_annual(df)
+        ax.plot(annual['year'], annual['P_annual'], 'o-', label='P',
+                color='#2980B9', linewidth=1.2, markersize=3)
+        ax.plot(annual['year'], annual['ET_annual'], 'o-', label='ET',
+                color='#E74C3C', linewidth=1.2, markersize=3)
+        ax.plot(annual['year'], annual['R_annual'], 'o-', label='R',
+                color='#27AE60', linewidth=1.2, markersize=3)
+        ax.fill_between(annual['year'], 0, annual['P_annual'], alpha=0.15, color='#2980B9')
+        ax.set_ylabel('mm/year', fontsize=10)
         ax.set_title(info['label'], fontsize=13, fontweight='bold')
         ax.legend(loc='upper right', fontsize=9)
         ax.grid(True, alpha=0.3)
 
-    axes[-1].set_xlabel('Date')
-    plt.suptitle('Monthly Water Balance Components (2000-2025)', fontsize=15, y=1.01)
+    axes[-1].set_xlabel('Year', fontsize=11)
+    plt.suptitle('Annual Water Balance Components (1950-2025)', fontsize=15, y=1.01)
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig2_water_balance_timeseries.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig03_water_balance_timeseries.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig2_water_balance_timeseries.png')
+    print('Saved: fig03_water_balance_timeseries.png')
 
 
 def plot_water_balance_structure(annual_dict):
@@ -345,10 +389,10 @@ def plot_water_balance_structure(annual_dict):
     table.set_fontsize(9)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig3_water_balance_structure.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig04_water_balance_structure.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig3_water_balance_structure.png')
+    print('Saved: fig04_water_balance_structure.png')
 
 
 def plot_runoff_coefficient(annual_dict):
@@ -365,15 +409,15 @@ def plot_runoff_coefficient(annual_dict):
 
     ax.set_xlabel('Year', fontsize=12)
     ax.set_ylabel('Runoff Coefficient (R/P)', fontsize=12)
-    ax.set_title('Annual Runoff Coefficient (2000-2025)', fontsize=14, fontweight='bold')
+    ax.set_title('Annual Runoff Coefficient (1950-2025)', fontsize=14, fontweight='bold')
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(FIG_DIR, 'fig5_runoff_coefficient.png'),
+    plt.savefig(os.path.join(FIG_DIR, 'fig05_runoff_coefficient.png'),
                 dpi=300, bbox_inches='tight')
     plt.close()
-    print('Saved: fig5_runoff_coefficient.png')
+    print('Saved: fig05_runoff_coefficient.png')
 
 
 # ============================================================================

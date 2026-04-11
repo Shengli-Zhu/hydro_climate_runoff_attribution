@@ -1,14 +1,14 @@
 // =============================================================================
 // ERA5-Land Monthly Data Extraction for Three Countries
 // Dataset: ECMWF/ERA5_LAND/MONTHLY_AGGR
-// Period: 2000-01 to 2025-12
+// Period: 1950-02 to 2025-12
 // Countries: Saudi Arabia (arid), Italy (transition), Bangladesh (humid)
-// Output: Monthly GeoTIFF stacks (312 bands) + Annual GeoTIFF stacks (26 bands)
+// Output: Monthly GeoTIFF stacks (~911 bands) + Annual GeoTIFF stacks (76 bands)
 // =============================================================================
 
 // ---------------------- 1. Load ERA5-Land Monthly Dataset ----------------------
 var era5land = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
-  .filterDate('2000-01-01', '2026-01-01');  // end is exclusive, so this captures through 2025-12
+  .filterDate('1950-02-01', '2026-01-01');  // end is exclusive, so this captures through 2025-12
 
 // ---------------------- 2. Define Country Boundaries ----------------------
 var countries = ee.FeatureCollection('FAO/GAUL/2015/level0');
@@ -112,7 +112,7 @@ var exportMonthlyStack = function(region, regionName, varName) {
 var SUM_VARS  = ['P_mm', 'ET_mm', 'R_sro_mm', 'R_ssro_mm', 'R_mm', 'Rn_sw', 'Rn_lw'];
 
 var exportAnnualStack = function(region, regionName, varName) {
-  var years = ee.List.sequence(2000, 2025);
+  var years = ee.List.sequence(1950, 2025);
 
   var annualCollection = ee.ImageCollection.fromImages(
     years.map(function(y) {
@@ -124,7 +124,7 @@ var exportAnnualStack = function(region, regionName, varName) {
     })
   );
 
-  var yearLabels = ee.List.sequence(2000, 2025).map(function(y) {
+  var yearLabels = ee.List.sequence(1950, 2025).map(function(y) {
     return ee.Number(y).int().format('%d');
   });
   var stack = annualCollection.toBands().rename(yearLabels).clip(region.geometry());
@@ -170,5 +170,6 @@ regions.forEach(function(r) {
   });
 });
 
-print('Export tasks configured: 39 monthly + 15 annual = 54 total.');
+print('Export tasks configured: 39 monthly (~911 bands each) + 15 annual (76 bands each) = 54 total.');
 print('Tip: submit Bangladesh tasks first (smallest files), then Italy, then Saudi.');
+print('Period: 1950-02 to 2025-12 (~911 months)');

@@ -36,7 +36,7 @@ def convert_country(country):
 
         da = rioxarray.open_rasterio(fpath, masked=True)  # (band, y, x)
         n_bands = da.sizes['band']
-        times = pd.date_range('2000-01', periods=n_bands, freq='MS')
+        times = pd.date_range('1950-02', periods=n_bands, freq='MS')
         da = (da.assign_coords(band=times)
                 .rename({'band': 'time', 'x': 'lon', 'y': 'lat'}))
         da.name = var
@@ -50,7 +50,7 @@ def convert_country(country):
     ds = xr.Dataset(arrays)
     ds.attrs['country'] = country
     ds.attrs['source']  = 'ERA5-Land ECMWF/ERA5_LAND/MONTHLY_AGGR'
-    ds.attrs['period']  = '2000-01 to 2025-12'
+    ds.attrs['period']  = f'1950-02 to {times[-1].strftime("%Y-%m")}'
     ds.attrs['crs']     = 'EPSG:4326'
 
     encoding = {
