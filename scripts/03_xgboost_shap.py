@@ -113,24 +113,42 @@ def aggregate_to_annual(df):
 # ============================================================================
 # Model Training
 # ============================================================================
+def neg_kge_eval(y_true, y_pred):
+    """XGBoost custom eval metric: returns -KGE so the trainer minimizes it
+    (i.e., maximizes KGE). Used for early stopping."""
+    if y_pred.std() < 1e-10 or y_true.std() < 1e-10:
+        return 1.0
+    r = np.corrcoef(y_true, y_pred)[0, 1]
+    if np.isnan(r):
+        r = 0.0
+    alpha = y_pred.std() / (y_true.std() + 1e-10)
+    beta  = y_pred.mean() / (y_true.mean() + 1e-10)
+    kge = 1 - np.sqrt((r - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
+    return -kge
+
+
 def train_xgboost(df, country_name, tune_hyperparams=True):
     """
-    Train XGBoost model with temporal split.
+    Train XGBoost with temporal split + KGE-based early stopping.
+    Train: year <= 1996, Validation: 1997-2004, Test: year >= 2005
     Returns: model, X_test, y_test, y_pred, metrics
     """
     X = df[FEATURE_NAMES].values
     y = df['R_mm'].values
     dates = df['time'].values
 
-    # Year-based temporal split: 1950-2004 train (~73%), 2005-2025 test (~27%)
-    train_mask = df['year'] <= 2004
-    X_train, X_test = X[train_mask], X[~train_mask]
-    y_train, y_test = y[train_mask], y[~train_mask]
-    dates_test = dates[~train_mask]
+    # Three-way temporal split
+    years = df['year'].values
+    train_mask = years <= 1996        # ~58%
+    val_mask   = (years >= 1997) & (years <= 2004)  # ~15%
+    test_mask  = years >= 2005        # ~27%
+
+    X_train, y_train = X[train_mask], y[train_mask]
+    X_val,   y_val   = X[val_mask],   y[val_mask]
+    X_test,  y_test  = X[test_mask],  y[test_mask]
+    dates_test = dates[test_mask]
 
     if tune_hyperparams:
-        # Hyperparameter tuning with GridSearchCV
-        # Note: tune_hyperparams=False recommended for large datasets (~1M+ rows)
         param_grid = {
             'n_estimators': [100, 200, 300],
             'max_depth': [3, 5, 7],
@@ -138,7 +156,6 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
             'subsample': [0.8],
             'colsample_bytree': [0.8],
         }
-
         base_model = xgb.XGBRegressor(random_state=RANDOM_STATE)
         grid_search = GridSearchCV(
             base_model, param_grid, cv=3,
@@ -150,10 +167,16 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
         print(f'  {country_name} best params: {best_params}')
     else:
         model = xgb.XGBRegressor(
-            n_estimators=200, max_depth=5, learning_rate=0.1,
-            subsample=0.8, colsample_bytree=0.8, random_state=RANDOM_STATE
+            n_estimators=500, max_depth=5, learning_rate=0.1,
+            subsample=0.8, colsample_bytree=0.8,
+            early_stopping_rounds=20,
+            eval_metric=neg_kge_eval,
+            random_state=RANDOM_STATE,
         )
-        model.fit(X_train, y_train)
+        model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+        best_iter = getattr(model, 'best_iteration', None)
+        if best_iter is not None:
+            print(f'  {country_name}: early-stopped at iter {best_iter}')
 
     # Predictions
     y_pred = model.predict(X_test)
@@ -176,18 +199,31 @@ def train_xgboost(df, country_name, tune_hyperparams=True):
 
 
 def train_xgboost_annual(df_annual, country_name):
-    """Train XGBoost on annual pixel data. Train: ≤2004, Test: ≥2005."""
+    """Train annual XGBoost with temporal split + KGE-based early stopping.
+    Train: year<=1996, Val: 1997-2004, Test: year>=2005"""
     X = df_annual[FEATURE_NAMES_ANNUAL].values
     y = df_annual['R_annual'].values
-    train_mask = df_annual['year'] <= 2004
-    X_train, X_test = X[train_mask], X[~train_mask]
-    y_train, y_test = y[train_mask], y[~train_mask]
+    years = df_annual['year'].values
+
+    train_mask = years <= 1996
+    val_mask   = (years >= 1997) & (years <= 2004)
+    test_mask  = years >= 2005
+
+    X_train, y_train = X[train_mask], y[train_mask]
+    X_val,   y_val   = X[val_mask],   y[val_mask]
+    X_test,  y_test  = X[test_mask],  y[test_mask]
 
     model = xgb.XGBRegressor(
-        n_estimators=200, max_depth=5, learning_rate=0.1,
-        subsample=0.8, colsample_bytree=0.8, random_state=RANDOM_STATE
+        n_estimators=500, max_depth=5, learning_rate=0.1,
+        subsample=0.8, colsample_bytree=0.8,
+        early_stopping_rounds=20,
+        eval_metric=neg_kge_eval,
+        random_state=RANDOM_STATE,
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+    best_iter = getattr(model, 'best_iteration', None)
+    if best_iter is not None:
+        print(f'  {country_name} Annual: early-stopped at iter {best_iter}')
     y_pred = model.predict(X_test)
 
     r2   = r2_score(y_test, y_pred)

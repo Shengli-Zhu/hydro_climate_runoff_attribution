@@ -207,20 +207,20 @@ def plot_annual_trends(data_dict):
             sig_text = '**' if mk_res['significant'] else 'ns'
             slope_text = f"Sen={mk_res['slope']:.3f}/yr ({sig_text})"
             ax.text(0.02, 0.95, slope_text, transform=ax.transAxes,
-                    fontsize=8, verticalalignment='top',
+                    fontsize=12, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
             if i == 0:
                 ax.set_title(info['label'], fontsize=12, fontweight='bold')
             if j == 0:
                 ax.set_ylabel(f"{var_info['label'].split(' (')[0]}\n({var_info['unit']})",
-                              fontsize=9)
-
+                              fontsize=14)
+            ax.tick_params(axis='both', labelsize=10)
             ax.grid(True, alpha=0.3)
 
-    axes[-1, 1].set_xlabel('Year', fontsize=12)
+    axes[-1, 1].set_xlabel('Year', fontsize=14)
     plt.suptitle('Annual Trends: Mann-Kendall + Sen\'s Slope (1950-2025)',
-                 fontsize=15, y=1.01)
+                 fontsize=15, fontweight='bold', y=1.01)
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig06_annual_trends.png'),
                 dpi=300, bbox_inches='tight')
@@ -275,19 +275,21 @@ def plot_trend_heatmap(trend_df):
                 val = matrix[ii, jj]
                 if not np.isnan(val):
                     marker = '*' if sig_matrix[ii, jj] else ''
-                    ax.text(jj, ii, f'{val:.3f}{marker}',
-                            ha='center', va='center', fontsize=8)
+                    ax.text(jj, ii, f'{val:.2f}{marker}',
+                            ha='center', va='center', fontsize=12)
 
         ax.set_xticks(range(len(scales)))
-        ax.set_xticklabels(scale_labels, rotation=0, fontsize=8)
+        ax.set_xticklabels(scale_labels, rotation=0, fontsize=13)
         ax.set_yticks(range(len(country_labels)))
-        ax.set_yticklabels(country_labels, fontsize=9, rotation=90, va='center')
-        ax.set_title(var_info['label'], fontsize=11, fontweight='bold')
+        ax.set_yticklabels(country_labels, fontsize=13, rotation=90, va='center')
+        ax.set_title(var_info['label'], fontsize=14, fontweight='bold')
 
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.ax.tick_params(labelsize=12)
+
 
     plt.suptitle("Sen's Slope Trends (* = significant at α=0.05, 1950–2025)",
-                 fontsize=14, fontweight='bold')
+                 fontsize=15, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig07_trend_heatmap.png'),
                 dpi=300, bbox_inches='tight')
@@ -390,19 +392,19 @@ def plot_spatial_trend_maps():
                          fraction=0.046, pad=0.04)
 
             if i == 0:
-                ax.set_title(info['label'], fontsize=11, fontweight='bold')
+                ax.set_title(info['label'], fontsize=14, fontweight='bold')
 
     # Row labels via fig.text — cartopy axes ignore set_ylabel
     row_label_ys = [0.78, 0.49, 0.20]
     for i, var_info in enumerate(TREND_VARS.values()):
-        fig.text(0.095, row_label_ys[i], var_info['label'],
-                 fontsize=9, fontweight='bold',
+        fig.text(0.090, row_label_ys[i], var_info['label'],
+                 fontsize=13,
                  ha='right', va='center', rotation=90)
 
     plt.suptitle(
         'Pixel-Level Sen\'s Slope (1950–2025)\nOpaque = significant (p<0.05), '
         'Transparent = non-significant',
-        fontsize=13, fontweight='bold', y=1.01
+        fontsize=15, fontweight='bold', y=0.98
     )
     plt.tight_layout()
     fig.subplots_adjust(left=0.10)  # must be after tight_layout

@@ -13,3 +13,14 @@ Thumbs.db
 
 # DEM data — large files (~1.3 GB), reproducible from gee/merit_dem_extraction.js
 data/DEM/
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.out
+*.toc

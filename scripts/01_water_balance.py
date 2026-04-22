@@ -239,9 +239,9 @@ def plot_spatial_distribution():
     Layout: 3 rows (P/ET/R) x 3 columns (countries).
     """
     SPATIAL_VARS = {
-        'P_mm':  {'label': 'Precipitation\n(mm/month)', 'cmap': 'Blues'},
-        'ET_mm': {'label': 'Evapotranspiration\n(mm/month)', 'cmap': 'YlOrRd'},
-        'R_mm':  {'label': 'Runoff\n(mm/month)', 'cmap': 'Greens'},
+        'P_mm':  {'label': 'Precipitation', 'cmap': 'Blues'},
+        'ET_mm': {'label': 'Evapotranspiration', 'cmap': 'YlOrRd'},
+        'R_mm':  {'label': 'Runoff', 'cmap': 'Greens'},
     }
     var_labels = list(SPATIAL_VARS.values())
 
@@ -250,7 +250,7 @@ def plot_spatial_distribution():
         subplot_kw={'projection': ccrs.PlateCarree()}
     )
     # Tighten column spacing; leave left margin for row labels
-    fig.subplots_adjust(left=0.08, right=0.95, top=0.93, bottom=0.02,
+    fig.subplots_adjust(left=0.06, right=0.95, top=0.93, bottom=0.02,
                         wspace=0.30, hspace=0.12)
 
     for j, (country, info) in enumerate(COUNTRIES.items()):
@@ -273,15 +273,18 @@ def plot_spatial_distribution():
             ax.gridlines(linewidth=0.3, alpha=0.5)
             ax.set_aspect('auto')
 
-            plt.colorbar(im, ax=ax, orientation='vertical',
-                         fraction=0.046, pad=0.04, label='mm/month')
+
+            cbar = plt.colorbar(im, ax=ax, orientation='vertical',
+                    fraction=0.046, pad=0.04)
+            cbar.set_label('mm/month', fontsize=13)
+            cbar.ax.tick_params(labelsize=11) 
 
             if i == 0:
-                ax.set_title(info['label'], fontsize=11, fontweight='bold')
+                ax.set_title(info['label'], fontsize=13, fontweight='bold')
             if j == 0:
-                ax.text(-0.12, 0.5, var_info['label'],
+                ax.text(-0.08, 0.5, var_info['label'],
                         transform=ax.transAxes,
-                        fontsize=10, fontweight='bold',
+                        fontsize=13,
                         ha='right', va='center', rotation=90)
 
     fig.suptitle('Multi-Year Mean Spatial Distribution (1950–2025)',
@@ -309,13 +312,13 @@ def plot_water_balance_timeseries(data_dict):
         ax.plot(annual['year'], annual['R_annual'], 'o-', label='R',
                 color='#27AE60', linewidth=1.2, markersize=3)
         ax.fill_between(annual['year'], 0, annual['P_annual'], alpha=0.15, color='#2980B9')
-        ax.set_ylabel('mm/year', fontsize=10)
+        ax.set_ylabel('mm/year', fontsize=13)
         ax.set_title(info['label'], fontsize=13, fontweight='bold')
-        ax.legend(loc='upper right', fontsize=9)
+        ax.legend(loc='upper right', fontsize=11)
         ax.grid(True, alpha=0.3)
 
-    axes[-1].set_xlabel('Year', fontsize=11)
-    plt.suptitle('Annual Water Balance Components (1950-2025)', fontsize=15, y=1.01)
+    axes[-1].set_xlabel('Year', fontsize=13)
+    plt.suptitle('Annual Water Balance Components (1950-2025)', fontweight='bold', fontsize=15, y=1.01)
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig03_water_balance_timeseries.png'),
                 dpi=300, bbox_inches='tight')
@@ -407,8 +410,8 @@ def plot_runoff_coefficient(annual_dict):
                 marker='o', markersize=4, linewidth=1.5,
                 label=info['label'], color=info['color'])
 
-    ax.set_xlabel('Year', fontsize=12)
-    ax.set_ylabel('Runoff Coefficient (R/P)', fontsize=12)
+    ax.set_xlabel('Year', fontsize=14)
+    ax.set_ylabel('Runoff Coefficient (R/P)', fontsize=14)
     ax.set_title('Annual Runoff Coefficient (1950-2025)', fontsize=14, fontweight='bold')
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3)
