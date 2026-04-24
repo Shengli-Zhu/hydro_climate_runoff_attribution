@@ -8,9 +8,9 @@ A comparative study of Saudi Arabia (arid), Italy (transitional), and Bangladesh
 
 | Country | Climate (Köppen) | Annual P (ERA5) | R/P | XGBoost R² (annual) |
 |---------|-----------------|-----------------|-----|----------------------|
-| Saudi Arabia | Extreme arid (BWh/BWk) | ~67 mm | 3.2% | 0.559 |
-| Italy | Mediterranean–temperate (Csa/Cfa) | ~1047 mm | 41.2% | 0.970 |
-| Bangladesh | Tropical monsoon (Am) | ~2316 mm | 56.2% | 0.984 |
+| Saudi Arabia | Extreme arid (BWh/BWk) | ~67 mm | 3.2% | 0.588 |
+| Italy | Mediterranean–temperate (Csa/Cfa) | ~1047 mm | 41.2% | 0.968 |
+| Bangladesh | Tropical monsoon (Am) | ~2316 mm | 56.2% | 0.983 |
 
 ## Project Structure
 
@@ -32,8 +32,13 @@ hydro_climate_runoff_attribution/
 │   └── 03_xgboost_shap.py           # XGBoost (monthly + annual) + SHAP attribution
 ├── figures/                         # Output figures (fig01–fig13b, 18 total)
 ├── results/                         # Output CSVs (metrics, SHAP importance, trends)
+├── report/                          # LaTeX report and supplement
+│   ├── final_report_temp.tex        # 10-page main report
+│   ├── final_supplement_temp.tex    # 4-page supplement
+│   ├── references.bib               # Bibliography
+│   └── figures_fp/                  # Local figure directory for the report
 ├── 研究计划_zh.md                   # Research plan (Chinese)
-├── Research plan_en.md             # Research plan (English)
+├── Research plan_en.md              # Research plan (English)
 └── requirements.txt
 ```
 
@@ -85,8 +90,8 @@ python scripts/03_xgboost_shap.py    # fig09–fig13b
 |--------|---------|
 | Water balance | P = ET + R + ΔS + ε (monthly, national mean) |
 | Trend analysis | Mann-Kendall test + Sen's slope; annual + seasonal; regional and pixel-level |
-| ML model | XGBoost regression, trained separately per country on pixel-level data |
-| Train/test split | year ≤ 2004 (train, ~73%) / year ≥ 2005 (test, ~27%) |
+| ML model | XGBoost regression (max 500 trees, depth 5, lr 0.1), trained separately per country on pixel-level data |
+| Train/val/test split | train ≤ 1996 / val 1997–2004 / test ≥ 2005; early stopping on validation KGE (patience 20) |
 | Attribution | SHAP TreeExplainer; monthly model (5000 test samples) + annual model (full pixel-year dataset) |
 | Evaluation | R², RMSE, NSE, KGE |
 
