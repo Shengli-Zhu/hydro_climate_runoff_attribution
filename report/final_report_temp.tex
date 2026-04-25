@@ -35,7 +35,7 @@
 % =======================================================================
 \section{Introduction}
 
-\subsection{Problem definition and literature context}
+\subsection{Problem definition and literature review}
 
 The partitioning of precipitation into runoff is central to water resource assessment, flood forecasting, and the detection of climate-change impacts on the terrestrial water cycle. Classical hydroclimatology organises catchments along an aridity continuum between water- and energy-limited regimes~\cite{budyko1974}: in water-limited systems almost all precipitation is consumed by evapotranspiration, whereas in energy-limited systems precipitation far exceeds atmospheric demand and generates sustained runoff. A large body of work has examined rainfall--runoff processes within individual basins or climate zones, but systematic comparison of the \emph{same} set of climate drivers across fundamentally different regimes using a single, internally consistent dataset remains rare.
 
@@ -53,7 +53,7 @@ This study quantifies how individual climate drivers control runoff across three
 
 \subsection{Novelty}
 
-This report contributes in three ways. First, we apply the SHAP attribution framework to the full 76-year ERA5-Land record, which is longer than the time windows commonly used in comparable machine-learning hydrology studies. Second, we train parallel XGBoost models at monthly and annual resolution and compare their SHAP rankings to illustrate how temporal aggregation influences feature attribution. Third, we interpret the resulting attribution patterns through the water-limited to energy-limited framework, showing how the relative importance of precipitation changes across the three hydroclimatic regimes.
+This report contributes in two ways. First, we apply the SHAP attribution framework to the full 76-year ERA5-Land record at pixel-year resolution, which is longer and more spatially resolved than the time windows commonly used in comparable machine-learning hydrology studies. Second, we interpret the resulting attribution patterns through the water-limited to energy-limited framework, showing how the relative importance of precipitation changes across the three hydroclimatic regimes.
 
 % =======================================================================
 \section{Study Area}
@@ -88,15 +88,13 @@ Long-term trends were evaluated at both the national and pixel scales. At the na
 
 \subsection{XGBoost--SHAP attribution}
 
-Gradient-boosted regression trees~\cite{xgboost2016} were trained to predict runoff from eight climate features ($P$, $T$, $T_d$, net short-wave and long-wave radiation, wind speed, soil temperature, and $\Delta S$). Monthly data were reshaped into pixel-month records (15.8~million rows for Saudi Arabia, 3.1~million for Italy, 1.3~million for Bangladesh), and a parallel annual model was constructed after aggregating to pixel-year records. A strictly temporal three-way split prevented data leakage: 1950--1996 for training, 1997--2004 for validation, and 2005--2025 for held-out testing. Trees were grown to depth~5 with learning rate 0.1, row and column subsampling 0.8, and a maximum of 500 rounds; training was terminated when the Kling--Gupta efficiency~\cite{gupta2009kge} on the validation set stopped improving for 20 consecutive rounds. Model performance was reported using $R^2$, RMSE, NSE~\cite{nash1970nse}, and KGE.
+Gradient-boosted regression trees~\cite{xgboost2016} were trained to predict annual runoff from eight climate features ($P$, $T$, $T_d$, net short-wave and long-wave radiation, wind speed, soil temperature, and $\Delta S$). Monthly ERA5-Land data were aggregated to pixel-year records, with flux variables summed and state variables averaged. A strictly temporal three-way split prevented data leakage: 1950--1996 for training, 1997--2004 for validation, and 2005--2025 for held-out testing. Trees were grown to depth~5 with learning rate 0.1, row and column subsampling 0.8, and a maximum of 500 rounds; training was terminated when the Kling--Gupta efficiency~\cite{gupta2009kge} on the validation set stopped improving for 20 consecutive rounds. Model performance was reported using $R^2$, RMSE, NSE~\cite{nash1970nse}, and KGE.
 
 Feature attributions were computed with the tree-exact SHAP algorithm~\cite{lundberg2020shaptrees}. For each sample the prediction decomposes as
 \begin{equation}
 \hat{y} = \phi_0 + \sum_{i=1}^{n} \phi_i,
 \end{equation}
-with $\phi_0$ the model base value and $\phi_i$ the marginal contribution of feature~$i$. Monthly SHAP values were computed on 5{,}000 randomly sampled test observations; annual SHAP values were computed on the full annual test set. The mean absolute SHAP value per feature was used as the cross-regime importance metric.
-
-A known limitation of ERA5-Land in hyper-arid regions is overestimation of evapotranspiration; this is reflected in the present dataset as $ET/P > 1$ for Saudi Arabia, which we treat as a data artefact rather than a physical process (see Discussion).
+with $\phi_0$ the model base value and $\phi_i$ the marginal contribution of feature~$i$. SHAP values were computed on the full annual test set, and the mean absolute SHAP value per feature was used as the cross-regime importance metric.
 
 % =======================================================================
 \section{Results}
@@ -115,9 +113,9 @@ The three regions occupy markedly different positions on the Budyko space (Table
         Country & $P$ & $ET$ & $R$ & $RC$ & $ET/P$ & $R/P$ \\
                 & (mm~yr$^{-1}$) & (mm~yr$^{-1}$) & (mm~yr$^{-1}$) & & & \\
         \midrule
-        Saudi Arabia (arid)        & 67.1    & 72.2    & 2.5     & 0.032 & 1.11 & 0.032 \\
-        Italy (transitional)       & 1046.7  & 633.4   & 435.0   & 0.412 & 0.61 & 0.412 \\
-        Bangladesh (humid)         & 2316.0  & 1052.0  & 1316.9  & 0.562 & 0.46 & 0.562 \\
+        Saudi Arabia (arid)        & 67.1    & 72.2    & 2.5     & 0.03 & 1.11 & 0.03 \\
+        Italy (transitional)       & 1046.7  & 633.4   & 435.0   & 0.41 & 0.61 & 0.41 \\
+        Bangladesh (humid)         & 2316.0  & 1052.0  & 1316.9  & 0.56 & 0.46 & 0.56 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -144,20 +142,20 @@ Pixel-level trend maps (Fig.~\ref{fig:spatialtrends}) reveal spatial heterogenei
         \toprule
         Country & Variable & Sen's slope & $p$-value & Sig. \\
         \midrule
-        Saudi Arabia & $P$ & $-0.17$ & 0.122 & --- \\
-                     & $ET$ & $-0.08$ & 0.392 & --- \\
-                     & $R$ & $-0.012$ & 0.002 & *** \\
-                     & $T$ & $+0.029$ & $<0.001$ & *** \\
+        Saudi Arabia & $P$ & $-0.17$ & 0.12 & --- \\
+                     & $ET$ & $-0.08$ & 0.39 & --- \\
+                     & $R$ & $-0.01$ & $<0.01$ & *** \\
+                     & $T$ & $+0.03$ & $<0.01$ & *** \\
         \midrule
-        Italy        & $P$ & $-0.14$ & 0.847 & --- \\
-                     & $ET$ & $+0.88$ & $<0.001$ & *** \\
-                     & $R$ & $-0.65$ & 0.180 & --- \\
-                     & $T$ & $+0.028$ & $<0.001$ & *** \\
+        Italy        & $P$ & $-0.14$ & 0.85 & --- \\
+                     & $ET$ & $+0.88$ & $<0.01$ & *** \\
+                     & $R$ & $-0.65$ & 0.18 & --- \\
+                     & $T$ & $+0.03$ & $<0.01$ & *** \\
         \midrule
-        Bangladesh   & $P$ & $-4.15$ & 0.018 & ** \\
-                     & $ET$ & $-0.20$ & 0.272 & --- \\
-                     & $R$ & $-3.70$ & 0.024 & ** \\
-                     & $T$ & $+0.005$ & 0.006 & *** \\
+        Bangladesh   & $P$ & $-4.15$ & 0.02 & ** \\
+                     & $ET$ & $-0.20$ & 0.27 & --- \\
+                     & $R$ & $-3.70$ & 0.02 & ** \\
+                     & $T$ & $+0.01$ & $<0.01$ & *** \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -171,22 +169,20 @@ Pixel-level trend maps (Fig.~\ref{fig:spatialtrends}) reveal spatial heterogenei
 
 \subsection{Machine-learning skill varies systematically with aridity}
 
-XGBoost skill increases monotonically from arid to humid at both monthly and annual resolution (Table~\ref{tab:metrics}, Fig.~\ref{fig:predobs}). Saudi Arabia's monthly model explains only 36\% of runoff variance ($R^2 = 0.356$, $\mathrm{KGE} = 0.354$), reflecting the episodic nature of flash-flood generation in hyper-arid environments; aggregation to annual resolution raises skill to $R^2 = 0.588$, confirming that monthly climate means are an incomplete predictor set in water-limited regimes. Italy and Bangladesh achieve near-perfect annual fits ($R^2 = 0.968$ and $0.983$ respectively), with annual runoff almost entirely predictable from annual climate variables.
+Annual XGBoost skill increases monotonically from arid to humid (Table~\ref{tab:metrics}, Fig.~\ref{fig:predobs}). Saudi Arabia reaches only $R^2 = 0.59$ ($\mathrm{KGE} = 0.69$), reflecting the episodic nature of flash-flood generation in hyper-arid environments and the limited information that any annual climate average can carry about event-driven runoff. Italy and Bangladesh achieve near-perfect annual fits ($R^2 = 0.97$ and $0.98$ respectively), with annual runoff almost entirely predictable from annual climate variables.
 
 \begin{table}[H]
     \centering
     \small
-    \caption{XGBoost predictive skill on the held-out test period (2005--2025). Monthly and annual models share feature sets but differ in target resolution.}
+    \caption{Annual XGBoost predictive skill on the held-out test period (2005--2025).}
     \label{tab:metrics}
-    \begin{tabular}{lcccccc}
+    \begin{tabular}{lcccc}
         \toprule
-        & \multicolumn{3}{c}{Monthly} & \multicolumn{3}{c}{Annual} \\
-        \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-        Country & $R^2$ & NSE & KGE & $R^2$ & NSE & KGE \\
+        Country & $R^2$ & RMSE (mm~yr$^{-1}$) & NSE & KGE \\
         \midrule
-        Saudi Arabia    & 0.356 & 0.356 & 0.354 & 0.588 & 0.588 & 0.737 \\
-        Italy           & 0.824 & 0.824 & 0.872 & 0.968 & 0.968 & 0.963 \\
-        Bangladesh      & 0.932 & 0.932 & 0.938 & 0.983 & 0.983 & 0.984 \\
+        Saudi Arabia    & 0.59 & 8.83  & 0.59 & 0.69 \\
+        Italy           & 0.97 & 78.87 & 0.97 & 0.96 \\
+        Bangladesh      & 0.98 & 90.07 & 0.98 & 0.98 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -226,18 +222,19 @@ The precipitation SHAP dependence plot (Fig.~\ref{fig:shapdep}) shows a near-lin
 
 Our results offer a quantitative demonstration of the classical Budyko transition: between Saudi Arabia and Bangladesh, the mean absolute SHAP of precipitation increases by approximately 250-fold, while the runoff coefficient rises from 3\% to 56\%. This gradient is mirrored by a systematic increase in climate-to-runoff predictability, from $R^2 = 0.59$ in the hyper-arid regime to $R^2 = 0.98$ in the humid regime. The progression is consistent with the physical argument that water-limited catchments dissipate most precipitation through evapotranspiration and generate runoff only during rare extremes, whereas humid catchments operate near saturation, where runoff tracks precipitation almost linearly. SHAP-based attribution therefore recovers, in a data-driven manner, a hydrological principle that has so far been expressed primarily through annual-mean water balance ratios.
 
-\subsection{Temporal scale alters attribution}
+\subsection{Limitations}
 
-A methodological finding is that SHAP rankings depend strongly on temporal resolution. In the monthly model, soil temperature was ranked the top predictor for Italy despite precipitation being the largest annual driver. We interpret soil temperature as a seasonal proxy: low winter values coincide with high runoff from snowmelt and low evapotranspiration, while high summer values coincide with suppressed runoff. The machine-learning model exploits this seasonal covariance as a predictive shortcut. Aggregation to annual resolution removes within-year variance, and the precipitation signal becomes unambiguously dominant. This result underscores that machine-learning attributions can reflect the temporal structure of the training data as much as direct physical causation, and it argues for annual-scale analysis when seasonal covariance is strong. The monthly--annual comparison is presented in the Supplementary Information.
-
-\subsection{Limitations and outlook}
-
-Three limitations shape the interpretation of our results. First, ERA5-Land's TESSEL land-surface scheme overestimates bare-soil evaporation in hyper-arid environments, producing the physically inadmissible $ET/P = 1.11$ for Saudi Arabia; our Saudi results should therefore be read as descriptive of the ERA5-Land product rather than of the physical landscape alone. Second, one XGBoost model was fitted per country, assuming spatial stationarity of the climate--runoff relationship -- a coarse approximation for Italy, where Alpine and Mediterranean subdomains are driven by distinct processes. Third, monthly and annual aggregation removes information on sub-monthly rainfall extremes, the very events that generate runoff in arid regions. Extensions of this framework could use hydrological basins instead of country polygons, incorporate sub-monthly forcings and topographic covariates, and validate ERA5-Land runoff directly against gauge records to benchmark how well the water- to energy-limited transition is reproduced in future climate projections.
+Three limitations shape the interpretation of our results. First, ERA5-Land's TESSEL land-surface scheme overestimates bare-soil evaporation in hyper-arid environments, producing the physically inadmissible $ET/P = 1.11$ for Saudi Arabia; our Saudi results should therefore be read as descriptive of the ERA5-Land product rather than of the physical landscape alone. Second, one XGBoost model was fitted per country, assuming spatial stationarity of the climate--runoff relationship -- a coarse approximation for Italy, where Alpine and Mediterranean subdomains are driven by distinct processes. Third, monthly and annual aggregation removes information on sub-monthly rainfall extremes, the very events that generate runoff in arid regions.
 
 % =======================================================================
 \section{Conclusion}
 
-Using 76 years of ERA5-Land reanalysis and an explainable gradient-boosting framework, we quantified the climatic controls on runoff across three countries spanning the global aridity gradient. Precipitation emerges as the top annual driver in all three regimes, but its absolute importance increases by two orders of magnitude from Saudi Arabia to Bangladesh, paralleling a rise in machine-learning predictability from $R^2 = 0.59$ to 0.98. Secondary controls shift from thermal and humidity proxies in the arid regime to antecedent soil water in the humid regime, consistent with a saturation-excess runoff mechanism. The analysis also exposes that feature attributions are temporal-scale dependent, with monthly rankings in Italy distorted by seasonal covariance. Together, these results provide a quantitative, SHAP-based traverse of the water- to energy-limited hydroclimatic continuum within a single internally consistent dataset.
+Using 76 years of ERA5-Land reanalysis and an explainable gradient-boosting framework, we quantified the climatic controls on annual runoff across three countries spanning the global aridity gradient. Precipitation emerges as the top driver in all three regimes, but its absolute importance increases by two orders of magnitude from Saudi Arabia to Bangladesh, paralleling a rise in machine-learning predictability from $R^2 = 0.59$ to 0.98. Secondary controls shift from thermal and humidity proxies in the arid regime to antecedent soil water in the humid regime, consistent with a saturation-excess runoff mechanism. Together, these results provide a quantitative, SHAP-based traverse of the water- to energy-limited hydroclimatic continuum within a single internally consistent dataset.
+
+% =======================================================================
+\section{Contribution}
+
+Both authors contributed equally to this work. Mariia Solodiankina led the water-balance and trend analyses, prepared the spatial-distribution and trend figures, and drafted the discussion. Shengli Zhu led data acquisition and preprocessing, designed and trained the XGBoost models, and produced the SHAP attribution figures and tables. The methodology and conclusion were written jointly, and both authors reviewed the full manuscript.
 
 % =======================================================================
 \bibliographystyle{plain}
