@@ -8,6 +8,7 @@
 \usepackage{float}
 \usepackage{booktabs}
 \usepackage{caption}
+\usepackage{microtype}
 
 \onehalfspacing
 \graphicspath{{figures_fp/}{../figures/}}
@@ -72,7 +73,7 @@ The three study countries occupy contrasting positions along the global aridity 
 
 \subsection{Data}
 
-All climate and hydrological variables were extracted from ERA5-Land Monthly Aggregated (\texttt{ECMWF/ERA5\_LAND/MONTHLY\_AGGR}) via Google Earth Engine, covering February 1950 to December 2025 (911 months) at 0.1$^\circ$ native resolution. Precipitation, evapotranspiration, surface and subsurface runoff, and four layers of volumetric soil water content were used to close the water balance. Air temperature, dewpoint temperature, net short- and long-wave radiation, 10~m wind speed, soil temperature, and soil water storage change provided the predictor set for the attribution analysis. Terrain data for study-area visualisation were obtained from the MERIT DEM v1.0.3~\cite{yamazaki2017merit} at 3~arc-second resolution. Country boundaries were taken from FAO GAUL 2015 and used to clip each variable to the national polygon.
+All climate and hydrological variables were extracted from ERA5-Land Monthly Aggregated (\texttt{ECMWF/\allowbreak ERA5\_\allowbreak LAND/\allowbreak MONTHLY\_\allowbreak AGGR}) via Google Earth Engine, covering February 1950 to December 2025 (911 months) at 0.1$^\circ$ native resolution. Precipitation, evapotranspiration, surface and subsurface runoff, and four layers of volumetric soil water content were used to close the water balance. Air temperature, dewpoint temperature, net short- and long-wave radiation, 10~m wind speed, soil temperature, and soil water storage change provided the predictor set for the attribution analysis. Terrain data for study-area visualisation were obtained from the MERIT DEM v1.0.3~\cite{yamazaki2017merit} at 3~arc-second resolution. Country boundaries were taken from FAO GAUL 2015 and used to clip each variable to the national polygon.
 
 \subsection{Water balance}
 
@@ -84,7 +85,7 @@ where $P$, $ET$, $R$ denote monthly precipitation, actual evapotranspiration, an
 
 \subsection{Trend analysis}
 
-Long-term trends were evaluated at both the national and pixel scales. At the national scale, non-parametric Mann--Kendall tests~\cite{mann1945} detected monotonic changes in annual and seasonal (DJF/MAM/JJA/SON) time series, with slope magnitudes estimated by the Sen's slope estimator~\cite{sen1968}. At the pixel scale, the same pair of tests was applied independently to each grid cell using the 76-year annual time series; pixels with $p < 0.05$ were rendered at full opacity to highlight significant spatial patterns.
+Long-term trends were evaluated at both the national and pixel scales. At the national scale, non-parametric Mann--Kendall tests~\cite{mann1945} detected monotonic changes in annual and seasonal (DJF/\allowbreak MAM/\allowbreak JJA/\allowbreak SON) time series, with slope magnitudes estimated by the Sen's slope estimator~\cite{sen1968}. At the pixel scale, the same pair of tests was applied independently to each grid cell using the 76-year annual time series; pixels with $p < 0.05$ were rendered at full opacity to highlight significant spatial patterns.
 
 \subsection{XGBoost--SHAP attribution}
 
