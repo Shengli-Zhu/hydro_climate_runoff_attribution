@@ -24,7 +24,6 @@ dependencies:
   - scikit-learn
   - xgboost
   - shap
-  # Presentation generation
-  - python-pptx
+
   # Notebook support (optional but useful for exploration)
   - jupyterlab

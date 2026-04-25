@@ -142,4 +142,4 @@ conda env create -f environment.yml
 conda activate hydroclimate
 ```
 
-Key packages: `xarray`, `rioxarray`, `rasterio`, `xgboost`, `shap`, `pymannkendall`, `cartopy`, `matplotlib`, `python-pptx`
+Key packages: `xarray`, `rioxarray`, `rasterio`, `xgboost`, `shap`, `pymannkendall`, `cartopy`, `matplotlib`
