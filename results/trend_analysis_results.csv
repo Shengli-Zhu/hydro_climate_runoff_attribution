@@ -1,0 +1,61 @@
+Country,Variable,Scale,Trend,Sen_Slope,p_value,Tau,Significant
+Saudi Arabia (Arid),Precipitation (mm),Annual,no trend,-0.16689,0.12180,-0.12140,False
+Saudi Arabia (Arid),Precipitation (mm),DJF,no trend,-0.14870,0.55930,-0.08667,False
+Saudi Arabia (Arid),Precipitation (mm),MAM,no trend,-0.05270,0.76142,-0.04667,False
+Saudi Arabia (Arid),Precipitation (mm),JJA,no trend,0.06873,0.33829,0.14000,False
+Saudi Arabia (Arid),Precipitation (mm),SON,no trend,0.02222,0.90704,0.02000,False
+Saudi Arabia (Arid),Evapotranspiration (mm),Annual,no trend,-0.08025,0.39166,-0.06737,False
+Saudi Arabia (Arid),Evapotranspiration (mm),DJF,no trend,-0.16609,0.36238,-0.13333,False
+Saudi Arabia (Arid),Evapotranspiration (mm),MAM,no trend,0.00560,0.98137,0.00667,False
+Saudi Arabia (Arid),Evapotranspiration (mm),JJA,no trend,0.05282,0.18311,0.19333,False
+Saudi Arabia (Arid),Evapotranspiration (mm),SON,no trend,0.03995,0.69134,0.06000,False
+Saudi Arabia (Arid),Runoff (mm),Annual,decreasing,-0.01209,0.00233,-0.23860,True
+Saudi Arabia (Arid),Runoff (mm),DJF,no trend,-0.00365,0.08821,-0.24667,False
+Saudi Arabia (Arid),Runoff (mm),MAM,no trend,-0.00087,0.49822,-0.10000,False
+Saudi Arabia (Arid),Runoff (mm),JJA,no trend,-0.00364,0.41369,-0.12000,False
+Saudi Arabia (Arid),Runoff (mm),SON,no trend,-0.00787,0.07984,-0.25333,False
+Saudi Arabia (Arid),Temperature (°C),Annual,increasing,0.02903,0.00000,0.62246,True
+Saudi Arabia (Arid),Temperature (°C),DJF,no trend,0.04427,0.06503,0.26667,False
+Saudi Arabia (Arid),Temperature (°C),MAM,no trend,0.02256,0.27234,0.16000,False
+Saudi Arabia (Arid),Temperature (°C),JJA,increasing,0.04312,0.00099,0.47333,True
+Saudi Arabia (Arid),Temperature (°C),SON,increasing,0.04789,0.00117,0.46667,True
+Italy (Transition),Precipitation (mm),Annual,no trend,-0.14099,0.84708,-0.01544,False
+Italy (Transition),Precipitation (mm),DJF,no trend,-1.12939,0.65723,-0.06667,False
+Italy (Transition),Precipitation (mm),MAM,no trend,1.99296,0.27234,0.16000,False
+Italy (Transition),Precipitation (mm),JJA,no trend,1.37061,0.19896,0.18667,False
+Italy (Transition),Precipitation (mm),SON,no trend,0.80452,0.72610,0.05333,False
+Italy (Transition),Evapotranspiration (mm),Annual,increasing,0.87511,0.00000,0.45263,True
+Italy (Transition),Evapotranspiration (mm),DJF,increasing,0.20707,0.00831,0.38000,True
+Italy (Transition),Evapotranspiration (mm),MAM,no trend,0.34605,0.11763,0.22667,False
+Italy (Transition),Evapotranspiration (mm),JJA,no trend,1.04757,0.07212,0.26000,False
+Italy (Transition),Evapotranspiration (mm),SON,increasing,0.41294,0.01615,0.34667,True
+Italy (Transition),Runoff (mm),Annual,no trend,-0.64895,0.17993,-0.10526,False
+Italy (Transition),Runoff (mm),DJF,no trend,0.15733,0.87014,0.02667,False
+Italy (Transition),Runoff (mm),MAM,no trend,0.10875,0.94414,0.01333,False
+Italy (Transition),Runoff (mm),JJA,no trend,0.57922,0.21579,0.18000,False
+Italy (Transition),Runoff (mm),SON,no trend,1.05749,0.19896,0.18667,False
+Italy (Transition),Temperature (°C),Annual,increasing,0.02789,0.00000,0.53404,True
+Italy (Transition),Temperature (°C),DJF,increasing,0.09658,0.00724,0.38667,True
+Italy (Transition),Temperature (°C),MAM,no trend,0.02226,0.29327,0.15333,False
+Italy (Transition),Temperature (°C),JJA,increasing,0.08582,0.00222,0.44000,True
+Italy (Transition),Temperature (°C),SON,increasing,0.05996,0.00545,0.40000,True
+Bangladesh (Humid),Precipitation (mm),Annual,decreasing,-4.14894,0.01810,-0.18526,True
+Bangladesh (Humid),Precipitation (mm),DJF,no trend,0.33715,0.62381,0.07333,False
+Bangladesh (Humid),Precipitation (mm),MAM,no trend,-6.31430,0.07984,-0.25333,False
+Bangladesh (Humid),Precipitation (mm),JJA,no trend,-6.32971,0.23361,-0.17333,False
+Bangladesh (Humid),Precipitation (mm),SON,no trend,1.32629,0.90704,0.02000,False
+Bangladesh (Humid),Evapotranspiration (mm),Annual,no trend,-0.20395,0.27186,-0.08632,False
+Bangladesh (Humid),Evapotranspiration (mm),DJF,no trend,0.04551,0.90704,0.02000,False
+Bangladesh (Humid),Evapotranspiration (mm),MAM,no trend,-0.36465,0.52831,-0.09333,False
+Bangladesh (Humid),Evapotranspiration (mm),JJA,no trend,0.73166,0.08821,0.24667,False
+Bangladesh (Humid),Evapotranspiration (mm),SON,increasing,0.61633,0.00471,0.40667,True
+Bangladesh (Humid),Runoff (mm),Annual,decreasing,-3.70011,0.02408,-0.17684,True
+Bangladesh (Humid),Runoff (mm),DJF,no trend,0.02040,1.00000,0.00000,False
+Bangladesh (Humid),Runoff (mm),MAM,no trend,-2.26259,0.12900,-0.22000,False
+Bangladesh (Humid),Runoff (mm),JJA,no trend,-7.91602,0.16822,-0.20000,False
+Bangladesh (Humid),Runoff (mm),SON,no trend,-1.93500,0.65723,-0.06667,False
+Bangladesh (Humid),Temperature (°C),Annual,increasing,0.00484,0.00565,0.21684,True
+Bangladesh (Humid),Temperature (°C),DJF,no trend,0.00838,0.72610,0.05333,False
+Bangladesh (Humid),Temperature (°C),MAM,no trend,0.02535,0.19896,0.18667,False
+Bangladesh (Humid),Temperature (°C),JJA,increasing,0.03677,0.00190,0.44667,True
+Bangladesh (Humid),Temperature (°C),SON,increasing,0.03477,0.00050,0.50000,True

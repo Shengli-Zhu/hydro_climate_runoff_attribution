@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Data aux files
+*.aux.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.out
+*.toc

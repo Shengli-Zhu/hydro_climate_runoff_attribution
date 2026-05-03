@@ -1,0 +1,28 @@
+name: hydroclimate
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  # Core scientific stack
+  - numpy
+  - pandas
+  - scipy
+  # Geo / raster / netCDF
+  - xarray
+  - netcdf4
+  - rasterio
+  - rioxarray
+  - cartopy
+  - shapely
+  # Trend analysis
+  - pymannkendall
+  # Plotting
+  - matplotlib
+  # ML
+  - scikit-learn
+  - xgboost
+  - shap
+  # Notebook support (optional but useful for exploration)
+  - jupyterlab
