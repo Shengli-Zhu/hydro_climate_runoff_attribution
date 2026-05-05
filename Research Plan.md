@@ -435,8 +435,8 @@ D:/anaconda3/envs/hydroclimate/python.exe scripts/03_xgboost_shap.py    # ~30–
 | fig06 | Regional annual trend time series with significance markers | 02 |
 | fig07 | Trend heatmap (Sen's slope by season, 4 variables, 3 countries) | 02 |
 | fig08 | Pixel-level Sen's slope spatial maps (P/R/T, 3×3) | 02 |
-| fig09 | Monthly XGBoost: predicted vs observed runoff (scatter) | 03 |
-| fig09b | Annual XGBoost: predicted vs observed runoff (scatter) | 03 |
+| fig09 | Monthly XGBoost: predicted vs ERA5-Land runoff (scatter) | 03 |
+| fig09b | Annual XGBoost: predicted vs ERA5-Land runoff (scatter) | 03 |
 | fig10 | Monthly SHAP temporal evolution (3-yr rolling mean) | 03 |
 | fig10b | Annual SHAP temporal evolution (one point per year) | 03 |
 | fig11 | Monthly SHAP beeswarm summary (3 countries) | 03 |

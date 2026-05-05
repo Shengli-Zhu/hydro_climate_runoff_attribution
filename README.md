@@ -127,7 +127,7 @@ python scripts/03_xgboost_shap.py    # fig09–fig13b
 | fig06 | Annual trend time series (P/ET/R/T, Mann-Kendall) |
 | fig07 | Trend heatmap (Sen's slope × season × country) |
 | fig08 | Pixel-level Sen's slope spatial maps (P/R/T, 3×3) |
-| fig09 / fig09b | Monthly / annual XGBoost: predicted vs observed |
+| fig09 / fig09b | Monthly / annual XGBoost: predicted vs ERA5-Land runoff |
 | fig10 / fig10b | Monthly / annual SHAP temporal evolution |
 | fig11 / fig11b | Monthly / annual SHAP beeswarm summary |
 | fig12 / fig12b | Monthly / annual feature importance comparison |

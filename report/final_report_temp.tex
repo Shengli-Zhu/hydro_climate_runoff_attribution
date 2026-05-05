@@ -9,6 +9,7 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{microtype}
+\usepackage{url}
 
 \onehalfspacing
 \graphicspath{{figures_fp/}{../figures/}}
@@ -28,7 +29,7 @@
 {\Large \textbf{Climate Controls on Runoff Across Hydroclimatic Regimes Using ERA5-Land and Machine Learning Analysis}}
 
 \vspace{0.2cm}
-\textit{Final Project Report} \hspace{0.5cm} May 2026
+\textit{Final Project Report}  
 \end{center}
 
 \vspace{0.4cm}
@@ -38,9 +39,13 @@
 
 \subsection{Problem definition and literature review}
 
-The partitioning of precipitation into runoff is central to water resource assessment, flood forecasting, and the detection of climate-change impacts on the terrestrial water cycle. Classical hydroclimatology organises catchments along an aridity continuum between water- and energy-limited regimes~\cite{budyko1974}: in water-limited systems almost all precipitation is consumed by evapotranspiration, whereas in energy-limited systems precipitation far exceeds atmospheric demand and generates sustained runoff. A large body of work has examined rainfall--runoff processes within individual basins or climate zones, but systematic comparison of the \emph{same} set of climate drivers across fundamentally different regimes using a single, internally consistent dataset remains rare.
+Whether climate change strengthens or weakens runoff depends on whether a catchment is water- or energy-limited, yet the relative importance of individual climate drivers along this continuum is rarely quantified within a single, internally consistent dataset. Classical hydroclimatology organises catchments along an aridity gradient~\cite{budyko1974}: water-limited systems lose most precipitation to evapotranspiration, while energy-limited systems receive precipitation in excess of atmospheric demand and generate sustained runoff. The Budyko framework captures, in two non-dimensional ratios, how the partitioning of precipitation depends on the balance between water supply and atmospheric demand. What it does not specify is which underlying climate variables drive catchment-scale runoff variability, nor how their relative weight shifts across regimes.
 
-Two recent developments make such comparison feasible. First, the ERA5-Land reanalysis~\cite{munoz2021era5land} now provides a 76-year, physically consistent record of precipitation, evapotranspiration, runoff, soil moisture, and energy-balance variables at 0.1$^\circ$ resolution globally. Second, gradient-boosted trees~\cite{xgboost2016} combined with Shapley-value attribution~\cite{lundberg2017shap,lundberg2020shaptrees} allow the contribution of each climate variable to individual runoff predictions to be quantified, moving beyond correlation toward a decomposition that is both local (per-sample) and model-exact. Despite these advances, SHAP-based attribution has rarely been deployed to compare runoff generation mechanisms across contrasting hydroclimatic regimes.
+Most existing rainfall--runoff studies have addressed this gap one regime at a time -- for individual basins, for a single climate zone, or for a fixed product such as a national gauge network -- and trends in precipitation, evapotranspiration, and discharge are typically reported separately. Comparisons that hold both the dataset and the methodology fixed across fundamentally different regimes are still relatively uncommon, partly because long, internally consistent datasets covering radically different climates have only recently become available, and partly because per-sample attribution requires methods that go beyond linear regression and global feature-importance scores.
+
+Earlier work has extended the Budyko framework with additional catchment- and climate-specific parameters~\cite{roderick2011}, and has separated climate from direct human impacts on streamflow within a single national network~\cite{wang2011}. Machine-learning approaches have entered hydrology more recently and frequently outperform traditional rainfall--runoff models for streamflow prediction, but their black-box nature has limited their use as scientific tools~\cite{nearing2021}. Tree-exact SHAP partly addresses the interpretability gap by decomposing each individual prediction into per-feature contributions; in this comparative form -- across regimes spanning the global aridity continuum -- we have seen relatively few applications to runoff attribution.
+
+Two recent developments narrow this gap. The ERA5-Land reanalysis~\cite{munoz2021era5land} provides a 76-year, physically consistent record of precipitation, evapotranspiration, runoff, soil moisture and energy-balance variables at 0.1$^\circ$ resolution, allowing the same closed water balance to be evaluated in the Sahara, the Po Valley and the Ganges delta. Gradient-boosted trees~\cite{xgboost2016} combined with Shapley-value attribution~\cite{lundberg2017shap,lundberg2020shaptrees} now allow each climate variable's contribution to an individual runoff prediction to be decomposed exactly and per-sample, rather than as a single dataset-wide importance score. Their combined use to compare runoff generation across contrasting hydroclimatic regimes, however, has so far been less common in the literature we surveyed.
 
 \subsection{Objective and research questions}
 
@@ -54,12 +59,12 @@ This study quantifies how individual climate drivers control runoff across three
 
 \subsection{Novelty}
 
-This report contributes in two ways. First, we apply the SHAP attribution framework to the full 76-year ERA5-Land record at pixel-year resolution, which is longer and more spatially resolved than the time windows commonly used in comparable machine-learning hydrology studies. Second, we interpret the resulting attribution patterns through the water-limited to energy-limited framework, showing how the relative importance of precipitation changes across the three hydroclimatic regimes.
+This report applies SHAP attribution to the full 76-year ERA5-Land record at pixel-year resolution -- longer and more spatially resolved than the time windows used in most comparable machine-learning hydrology studies -- and reads the resulting attribution patterns through the water- to energy-limited framework, tracing how precipitation's importance shifts across the three regimes.
 
 % =======================================================================
 \section{Study Area}
 
-The three study countries occupy contrasting positions along the global aridity spectrum (Fig.~\ref{fig:studyarea}, Table~\ref{tab:waterbalance}). Saudi Arabia is hyper-arid (K\"oppen BWh/BWk), with topography ranging from the Hijaz mountains along the Red Sea coast to the Rub'~al~Khali sand seas in the interior. Italy spans a Mediterranean (Csa) south and an Alpine--temperate (Cfa/Cfb) north, producing a marked north--south precipitation gradient. Bangladesh lies in the tropical monsoon belt (Am), dominated by the Ganges--Brahmaputra--Meghna lowlands. The three countries therefore represent water-limited, transitional, and energy-limited hydroclimatic regimes within a single comparative framework.
+The three study countries occupy contrasting positions along the global aridity spectrum (Fig.~\ref{fig:studyarea}, Table~\ref{tab:waterbalance}). Saudi Arabia is hyper-arid (K\"oppen BWh/BWk), with topography ranging from the Hijaz mountains along the Red Sea coast to the Rub'~al~Khali sand seas in the interior. Italy spans a Mediterranean (Csa) south and an Alpine--temperate (Cfa/Cfb) north, producing a marked north--south precipitation gradient. Bangladesh lies in the tropical monsoon belt (Am), dominated by the Ganges--Brahmaputra--Meghna lowlands. The three together span the water-limited, transitional, and energy-limited regimes.
 
 \begin{figure}[H]
     \centering
@@ -102,7 +107,7 @@ with $\phi_0$ the model base value and $\phi_i$ the marginal contribution of fea
 
 \subsection{Water balance structure}
 
-The three regions occupy markedly different positions on the Budyko space (Table~\ref{tab:waterbalance}, Fig.~\ref{fig:spatial}). Saudi Arabia receives only 67~mm~yr$^{-1}$ of precipitation, almost all of which is attributed to evapotranspiration, giving a runoff coefficient of 3.2\%. The associated $ET/P$ value of 1.11 is not physically realisable in a closed system and reflects a known ERA5-Land limitation discussed in Section~\ref{sec:discussion}. Italy exhibits intermediate fluxes ($P \approx 1047$~mm~yr$^{-1}$, $RC = 41.2\%$). Bangladesh is strongly energy-limited, with $P \approx 2316$~mm~yr$^{-1}$ and 56.2\% of precipitation converted to runoff. Spatial distributions (Fig.~\ref{fig:spatial}) reveal substantial within-country heterogeneity: Saudi precipitation and runoff cluster along the Hijaz escarpment, Italian runoff is concentrated in Alpine headwaters, and Bangladesh's runoff maxima align with the Meghna flood zone in the north-east.
+The three regions occupy markedly different positions on the Budyko space (Table~\ref{tab:waterbalance}, Fig.~\ref{fig:spatial}). Saudi Arabia receives only 67~mm~yr$^{-1}$ of precipitation, almost all attributed to evapotranspiration, giving a runoff coefficient of 3\%. Italy partitions intermediate fluxes ($P \approx 1{,}047$~mm~yr$^{-1}$, $RC = 41\%$). Bangladesh is strongly energy-limited, with $P \approx 2{,}316$~mm~yr$^{-1}$ and 56\% of precipitation converted to runoff. The spatial maps (Fig.~\ref{fig:spatial}) show that within-country heterogeneity is large: Saudi precipitation and runoff cluster along the Hijaz escarpment, Italian runoff concentrates in the Alpine headwaters, and Bangladesh's runoff maxima follow the Meghna flood zone in the north-east.
 
 \begin{table}[H]
     \centering
@@ -115,8 +120,8 @@ The three regions occupy markedly different positions on the Budyko space (Table
                 & (mm~yr$^{-1}$) & (mm~yr$^{-1}$) & (mm~yr$^{-1}$) & & & \\
         \midrule
         Saudi Arabia (arid)        & 67.1    & 72.2    & 2.5     & 0.03 & 1.11 & 0.03 \\
-        Italy (transitional)       & 1046.7  & 633.4   & 435.0   & 0.41 & 0.61 & 0.41 \\
-        Bangladesh (humid)         & 2316.0  & 1052.0  & 1316.9  & 0.56 & 0.46 & 0.56 \\
+        Italy (transitional)       & 1{,}046.7  & 633.4   & 435.0   & 0.41 & 0.61 & 0.41 \\
+        Bangladesh (humid)         & 2{,}316.0  & 1{,}052.0  & 1{,}316.9  & 0.56 & 0.46 & 0.56 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -130,9 +135,9 @@ The three regions occupy markedly different positions on the Budyko space (Table
 
 \subsection{Long-term trends}
 
-All three countries have warmed significantly over 1950--2025 (Table~\ref{tab:trends}). Precipitation and runoff trends are more regionally specific: Bangladesh shows statistically significant declines in both ($P$: $-4.1$~mm~yr$^{-1}$; $R$: $-3.7$~mm~yr$^{-1}$), consistent with reports of weakening summer monsoon intensity. Italy exhibits a significant increase in evapotranspiration ($+0.88$~mm~yr$^{-1}$), a warming signature in the water balance without a matching decline in $P$ or $R$. Saudi Arabia shows a weak but significant decrease in runoff despite no significant change in precipitation.
+All three countries warm significantly over 1950--2025 (Table~\ref{tab:trends}). Precipitation and runoff trends are regionally specific. Bangladesh shows simultaneous declines in $P$ ($-4.15$~mm~yr$^{-1}$) and $R$ ($-3.70$~mm~yr$^{-1}$), a fingerprint of weakening summer monsoon. Italy shows a significant rise in evapotranspiration ($+0.88$~mm~yr$^{-1}$) without a matching change in $P$ or $R$. Saudi Arabia shows a weak but significant runoff decrease despite no change in precipitation.
 
-Pixel-level trend maps (Fig.~\ref{fig:spatialtrends}) reveal spatial heterogeneity hidden by national means. Italy displays a clear north--south contrast, with precipitation and runoff increasing in Alpine areas and decreasing in the Mediterranean south. Bangladesh's precipitation decline is strongest in the north-eastern Sylhet region, while the south-western delta shows only muted trends. Saudi Arabia's significant pixels are largely confined to the Hijaz--Asir highlands, underscoring that the bulk of the peninsula has no detectable 76-year trend in $P$ or $R$.
+Pixel-level maps (Fig.~\ref{fig:spatialtrends}) expose patterns hidden by national means. Italy displays a clear north--south contrast: $P$ and $R$ increase in the Alpine north and decrease in the Mediterranean south. Bangladesh's $P$ decline concentrates in the north-eastern Sylhet region, while the south-western delta shows muted trends. Saudi Arabia's significant pixels are confined to the Hijaz--Asir highlands; the rest of the peninsula has no detectable 76-year trend in $P$ or $R$.
 
 \begin{table}[H]
     \centering
@@ -170,7 +175,7 @@ Pixel-level trend maps (Fig.~\ref{fig:spatialtrends}) reveal spatial heterogenei
 
 \subsection{Machine-learning skill varies systematically with aridity}
 
-Annual XGBoost skill increases monotonically from arid to humid (Table~\ref{tab:metrics}, Fig.~\ref{fig:predobs}). Saudi Arabia reaches only $R^2 = 0.59$ ($\mathrm{KGE} = 0.69$), reflecting the episodic nature of flash-flood generation in hyper-arid environments and the limited information that any annual climate average can carry about event-driven runoff. Italy and Bangladesh achieve near-perfect annual fits ($R^2 = 0.97$ and $0.98$ respectively), with annual runoff almost entirely predictable from annual climate variables.
+Annual XGBoost skill rises monotonically from arid to humid (Table~\ref{tab:metrics}, Fig.~\ref{fig:predobs}). Saudi Arabia reaches only $R^2 = 0.59$ ($\mathrm{KGE} = 0.69$): annual climate averages carry too little information about the rare extreme events that generate runoff in a hyper-arid environment. Italy and Bangladesh achieve near-perfect annual fits ($R^2 = 0.97$ and $0.98$), with annual runoff almost entirely predictable from annual climate variables.
 
 \begin{table}[H]
     \centering
@@ -191,15 +196,15 @@ Annual XGBoost skill increases monotonically from arid to humid (Table~\ref{tab:
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{fig09b_annual_predicted_vs_observed.png}
-    \caption{Annual XGBoost predictions versus ERA5-Land observed runoff on the held-out test period (2005--2025). Dashed line: 1:1. Inset metrics computed on all pixel-year samples per country.}
+    \caption{Annual XGBoost predictions versus ERA5-Land reanalysis runoff on the held-out test period (2005--2025). Dashed line: 1:1. Inset metrics computed on all pixel-year samples per country.}
     \label{fig:predobs}
 \end{figure}
 
 \subsection{Climate drivers of runoff across the aridity gradient}
 
-Precipitation emerges as the top driver of annual runoff in all three countries, but its absolute contribution spans two orders of magnitude between regimes (Fig.~\ref{fig:shapbar}). Mean $|\mathrm{SHAP}|$ for precipitation is $\sim\!2$~mm~yr$^{-1}$ in Saudi Arabia, $\sim\!270$~mm~yr$^{-1}$ in Italy, and $\sim\!500$~mm~yr$^{-1}$ in Bangladesh. Secondary drivers are regime-specific: soil temperature and dewpoint temperature contribute most in Saudi Arabia (though all features have low magnitude); soil temperature and soil water change are the largest secondary controls in Italy; and antecedent soil water change ranks second in Bangladesh, consistent with a saturation-excess runoff mechanism in which the water state of the catchment modulates the efficiency of precipitation-to-runoff conversion.
+Precipitation is the top driver of annual runoff in all three countries, but its absolute contribution spans two orders of magnitude (Fig.~\ref{fig:shapbar}). Mean $|\mathrm{SHAP}|$ for precipitation is $\sim$2~mm~yr$^{-1}$ in Saudi Arabia, $\sim$270~mm~yr$^{-1}$ in Italy, and $\sim$500~mm~yr$^{-1}$ in Bangladesh. Secondary drivers differ between regimes. In Saudi Arabia all features have small magnitude; net short-wave radiation and dewpoint temperature occupy the second and third positions. In Italy the second and third drivers are soil temperature and soil water change ($\sim$45~mm~yr$^{-1}$). In Bangladesh net short-wave radiation ranks second and soil water change third ($\sim$30~mm~yr$^{-1}$). The presence of soil water change among the top three in both Italy and Bangladesh suggests that antecedent soil conditions modulate how rainfall converts to runoff in both transitional and humid regimes, even if the mechanism is not strictly diagnostic of saturation-excess flow.
 
-The precipitation SHAP dependence plot (Fig.~\ref{fig:shapdep}) shows a near-linear relationship in Bangladesh: each additional millimetre of annual precipitation adds approximately one millimetre of predicted runoff. Italy displays a threshold response -- below $\sim\!500$~mm~yr$^{-1}$ precipitation contributes negligibly to runoff, above which its SHAP contribution rises steeply. In Saudi Arabia the relationship is diffuse, consistent with low overall model skill. Warmer pixel-years (red points) tend to show suppressed SHAP values at the same precipitation level, indicating that higher atmospheric demand reduces the efficiency of precipitation-to-runoff conversion.
+The dependence plot for precipitation (Fig.~\ref{fig:shapdep}) shows a near-linear relationship in Bangladesh, where each additional millimetre of annual rainfall adds about one millimetre of predicted runoff. Italy shows a smooth, monotonic curve: SHAP changes sign near $\sim$1,000~mm~yr$^{-1}$ -- close to the country's mean annual precipitation -- with drier pixels pulling the prediction below the model average and wetter pixels pushing it above. Saudi Arabia shows the same hockey-stick shape at much smaller magnitudes, in line with the low model skill there.
 
 \begin{figure}[H]
     \centering
@@ -219,23 +224,28 @@ The precipitation SHAP dependence plot (Fig.~\ref{fig:shapdep}) shows a near-lin
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{A quantitative traverse of the water- to energy-limited continuum}
+\subsection{Mechanism behind the cross-regime gradient}
 
-Our results offer a quantitative demonstration of the classical Budyko transition: between Saudi Arabia and Bangladesh, the mean absolute SHAP of precipitation increases by approximately 250-fold, while the runoff coefficient rises from 3\% to 56\%. This gradient is mirrored by a systematic increase in climate-to-runoff predictability, from $R^2 = 0.59$ in the hyper-arid regime to $R^2 = 0.98$ in the humid regime. The progression is consistent with the physical argument that water-limited catchments dissipate most precipitation through evapotranspiration and generate runoff only during rare extremes, whereas humid catchments operate near saturation, where runoff tracks precipitation almost linearly. SHAP-based attribution therefore recovers, in a data-driven manner, a hydrological principle that has so far been expressed primarily through annual-mean water balance ratios.
+The gradient has a straightforward physical interpretation. In water-limited catchments most precipitation is consumed by evapotranspiration and only rare extremes leave a runoff signal, so a single annual rainfall value carries little predictive information and any individual climate driver contributes little on average. As a system moves toward saturation, each additional millimetre of rainfall is increasingly likely to leave the catchment as runoff, the climate--runoff relationship flattens toward unity, and precipitation alone explains nearly all the variance. The transition is not a step at any particular aridity threshold but a smooth re-weighting of which variables matter and how strongly -- and the shape of the precipitation dependence plot in each country, from a hockey-stick at very small magnitudes (Saudi Arabia) to a smooth S-curve (Italy) to an almost linear response (Bangladesh), traces this re-weighting feature by feature.
 
 \subsection{Limitations}
 
-Three limitations shape the interpretation of our results. First, ERA5-Land's TESSEL land-surface scheme overestimates bare-soil evaporation in hyper-arid environments, producing the physically inadmissible $ET/P = 1.11$ for Saudi Arabia; our Saudi results should therefore be read as descriptive of the ERA5-Land product rather than of the physical landscape alone. Second, one XGBoost model was fitted per country, assuming spatial stationarity of the climate--runoff relationship -- a coarse approximation for Italy, where Alpine and Mediterranean subdomains are driven by distinct processes. Third, monthly and annual aggregation removes information on sub-monthly rainfall extremes, the very events that generate runoff in arid regions.
+ERA5-Land overestimates bare-soil evaporation in hyper-arid regions; the resulting $ET/P > 1$ in Saudi Arabia is a known reanalysis artefact, and the Saudi numbers should be read as descriptive of the product rather than of the physical landscape. Fitting a single XGBoost model per country implicitly assumes that the climate--runoff relationship is spatially stationary within each polygon. This is a rough approximation for Italy, where Alpine and Mediterranean subdomains are driven by different processes, and could be relaxed by clustering pixels before model fitting. Aggregating to monthly and annual scales also removes information on sub-monthly storms, which dominate runoff in arid environments. Finally, all conclusions rest on a single reanalysis product without ground-based verification; comparison against gauge discharge or in-situ evapotranspiration would strengthen the regime-specific findings, particularly in Saudi Arabia.
 
 % =======================================================================
 \section{Conclusion}
 
-Using 76 years of ERA5-Land reanalysis and an explainable gradient-boosting framework, we quantified the climatic controls on annual runoff across three countries spanning the global aridity gradient. Precipitation emerges as the top driver in all three regimes, but its absolute importance increases by two orders of magnitude from Saudi Arabia to Bangladesh, paralleling a rise in machine-learning predictability from $R^2 = 0.59$ to 0.98. Secondary controls shift from thermal and humidity proxies in the arid regime to antecedent soil water in the humid regime, consistent with a saturation-excess runoff mechanism. Together, these results provide a quantitative, SHAP-based traverse of the water- to energy-limited hydroclimatic continuum within a single internally consistent dataset.
+Across three countries spanning the global aridity gradient, precipitation is the top driver of annual runoff in every regime; its mean absolute SHAP rises by roughly 250-fold from Saudi Arabia to Bangladesh, paralleling an increase in machine-learning predictability from $R^2 = 0.59$ to 0.98. Soil water change appears in the top three drivers of both Italy and Bangladesh, suggesting that antecedent soil conditions help shape rainfall-to-runoff conversion in both transitional and humid systems. Together, the SHAP and predictability gradients offer one way to express the Budyko water- to energy-limited transition as a quantity that can be approximated from a single dataset.
 
 % =======================================================================
 \section{Contribution}
 
 Both authors contributed equally to this work. Mariia Solodiankina led the water-balance and trend analyses, prepared the spatial-distribution and trend figures, and drafted the discussion. Shengli Zhu led data acquisition and preprocessing, designed and trained the XGBoost models, and produced the SHAP attribution figures and tables. The methodology and conclusion were written jointly, and both authors reviewed the full manuscript.
+
+% =======================================================================
+\section{Code and Data Availability}
+
+ERA5-Land monthly data are accessible via Google Earth Engine (\texttt{ECMWF/\allowbreak ERA5\_\allowbreak LAND/\allowbreak MONTHLY\_\allowbreak AGGR}). MERIT DEM v1.0.3~\cite{yamazaki2017merit} is also available via Google Earth Engine (\texttt{MERIT/\allowbreak DEM/\allowbreak v1\_0\_3}). All processing scripts, intermediate datasets, and figures are openly available at \url{https://github.com/Shengli-Zhu/hydro_climate_runoff_attribution}.
 
 % =======================================================================
 \bibliographystyle{plain}

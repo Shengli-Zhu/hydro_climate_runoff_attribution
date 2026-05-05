@@ -278,7 +278,7 @@ def plot_predicted_vs_observed(results):
                 max(y_test.max(), y_pred.max())]
         ax.plot(lims, lims, 'k--', linewidth=1, alpha=0.7)
 
-        ax.set_xlabel('Observed R (mm/month)', fontsize=11)
+        ax.set_xlabel('ERA5-Land R (mm/month)', fontsize=11)
         ax.set_ylabel('Predicted R (mm/month)', fontsize=11)
         ax.set_title(info['label'], fontsize=12, fontweight='bold')
 
@@ -291,7 +291,7 @@ def plot_predicted_vs_observed(results):
         ax.grid(True, alpha=0.3)
         ax.set_aspect('equal', adjustable='box')
 
-    plt.suptitle('XGBoost: Predicted vs Observed Monthly Runoff',
+    plt.suptitle('XGBoost: Predicted vs ERA5-Land Monthly Runoff',
                  fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig09_predicted_vs_observed.png'),
@@ -315,7 +315,7 @@ def plot_annual_predicted_vs_observed(annual_results):
         lims = [min(y_test.min(), y_pred.min()),
                 max(y_test.max(), y_pred.max())]
         ax.plot(lims, lims, 'k--', linewidth=1, alpha=0.7)
-        ax.set_xlabel('Observed R (mm/year)', fontsize=11)
+        ax.set_xlabel('ERA5-Land R (mm/year)', fontsize=11)
         ax.set_ylabel('Predicted R (mm/year)', fontsize=11)
         ax.set_title(info['label'], fontsize=12, fontweight='bold')
         text = (f"R2={metrics['R2']:.3f}\nRMSE={metrics['RMSE']:.2f}\n"
@@ -326,7 +326,7 @@ def plot_annual_predicted_vs_observed(annual_results):
         ax.grid(True, alpha=0.3)
         ax.set_aspect('equal', adjustable='box')
 
-    plt.suptitle('Annual XGBoost: Predicted vs Observed Annual Runoff',
+    plt.suptitle('Annual XGBoost: Predicted vs ERA5-Land Annual Runoff',
                  fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, 'fig09b_annual_predicted_vs_observed.png'),
